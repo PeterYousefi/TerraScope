@@ -5,16 +5,22 @@ The supplied `lovable/` directory is a source export, with no `.git` directory, 
 
 ## Checklist
 - [x] Inspect source, models, routes and project instructions
-- [ ] Run baseline frontend tests/build and local server
+- [x] Run baseline frontend tests/build and local server (all passed)
 - [ ] Connect Git history/remote (blocked: supplied export has neither; URL requested)
-- [ ] Scaffold typed backend, settings, health/capabilities and SQLite persistence
-- [ ] Implement cached HTTP integrations for NLR, Census ACS/TIGER and OSM
-- [ ] Generate projected deterministic candidate areas and reproducible scores
-- [ ] Add real execution workflow, API routes and restart recovery
-- [ ] Add opt-in structured OpenAI planner/report validation
-- [ ] Connect workspace/report/compare to backend; preserve landing scenes
-- [ ] Provider, spatial, API, frontend and browser tests
-- [ ] Evaluation harness and opt-in live smoke test
-- [ ] Local setup/troubleshooting and final verification
+- [x] Scaffold typed backend, settings, health/capabilities and SQLite persistence
+- [x] Implement cached HTTP integrations for NLR, Census ACS/TIGER and OSM
+- [x] Generate projected deterministic candidate areas and reproducible scores
+- [x] Add real execution workflow, API routes and restart recovery
+- [x] Add opt-in structured OpenAI planner/report validation
+- [x] Connect workspace/report/compare to backend; preserve landing scenes
+- [x] Provider, spatial, API, frontend and browser tests
+- [x] Evaluation harness and opt-in live smoke test
+- [x] Local setup/troubleshooting and final verification
 
 Commit/push each tested slice when existing remote is known. Never provision or deploy cloud resources. Missing provider keys must remain explicit; fixture data is test-only or explicitly labeled preview data.
+
+## Completion record
+
+The local code and fixture-based workflow are implemented and verified: 31 backend tests, 3 frontend tests and 2 Chromium browser tests; typecheck, build and lint pass (lint retains 7 existing export warnings). Live TIGER Austin boundary and 19,571 normalized OSM records were verified. Live station/demographic ranking remains blocked by missing NLR and activated Census keys. Optional paid OpenAI calls were not executed. Routing enrichment remains unimplemented and distances are labeled straight-line. See `VALIDATION.md` for evidence and exact limits.
+
+The folder export had no original branch/history. Local focused commits preserve progress; all pushes remain blocked by the absent GitHub URL. `git push` explicitly failed with no configured destination. No cloud action or paid-service activation was performed.
