@@ -4,8 +4,8 @@ import type { AgentExecutionStep, CandidateLocation, DataSource, EvidenceItem } 
 import { totalScore } from "@/lib/demo/fixtures";
 import { cn } from "@/lib/utils";
 
-export function DemoBadge({ className }: { className?: string }) {
-  return <span className={cn("label-tech inline-flex border border-signal/60 bg-signal/10 px-1.5 py-0.5 text-foreground", className)}>Demo data</span>;
+export function DemoBadge({ className, isDemo = true, mode }: { className?: string; isDemo?: boolean; mode?: string | undefined }) {
+  return <span className={cn("label-tech inline-flex border border-signal/60 bg-signal/10 px-1.5 py-0.5 text-foreground", className)}>{isDemo ? "Demo data" : mode === "cached" ? "Cached real data" : mode === "mixed" ? "Live + cached real data" : "Live analysis"}</span>;
 }
 
 export function ScoreBars({ c, compact }: { c: CandidateLocation; compact?: boolean }) {
@@ -30,7 +30,7 @@ export function Timeline({ steps, current = steps.length }: { steps: AgentExecut
   return (
     <ol className="relative space-y-4 border-l border-border pl-5">
       {steps.map((s, i) => {
-        const state = i < current ? "done" : i === current ? "running" : "pending";
+        const state = s.status ?? (i < current ? "done" : i === current ? "running" : "pending");
         return (
           <li key={s.id} className="relative">
             <span className={cn("absolute -left-[27px] top-0.5 grid size-3.5 place-items-center rounded-full border bg-paper", state === "done" ? "border-primary bg-primary text-primary-foreground" : state === "running" ? "border-primary" : "border-border")}>
@@ -39,7 +39,7 @@ export function Timeline({ steps, current = steps.length }: { steps: AgentExecut
             </span>
             <div className="label-tech text-muted-foreground">{s.agent}</div>
             <div className={cn("text-sm transition-colors", state === "pending" ? "text-muted-foreground/60" : "text-foreground")}>{s.label}</div>
-            {state !== "pending" && <div className="mt-0.5 text-xs text-muted-foreground">{s.detail}</div>}
+            {state !== "pending" && <div className="mt-0.5 text-xs text-muted-foreground">{s.detail}{s.timestamp && <span className="block">{s.timestamp} · {s.durationMs} ms · {s.status}</span>}</div>}
           </li>
         );
       })}
@@ -65,7 +65,8 @@ export function EvidenceTrail({ items, sources, filter }: { items: EvidenceItem[
             {isOpen && src && (
               <div className="mb-3 ml-9 border-l-2 border-signal pl-3 text-xs text-muted-foreground">
                 <div className="text-foreground">{src.name} — {src.publisher}</div>
-                <div className="mt-1">Status: sample reference · {src.freshness}</div>
+                <div className="mt-1">Status: {src.status} · {src.freshness}</div>
+                {src.parameters && <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap">{JSON.stringify(src.parameters, null, 2)}</pre>}
                 <a href={src.url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-primary hover:underline">Publisher page <ExternalLink className="size-3" /></a>
               </div>
             )}
@@ -83,7 +84,7 @@ export function SourceList({ sources }: { sources: DataSource[] }) {
         <li key={s.id} className="flex items-center gap-3 text-sm">
           <span className="size-1.5 rounded-full bg-signal" aria-hidden />
           <a href={s.url} target="_blank" rel="noreferrer" className="flex-1 hover:text-primary">{s.publisher}</a>
-          <span className="label-tech text-muted-foreground">Not fetched</span>
+          <span className="label-tech text-muted-foreground">{s.status === "sample" ? "Not fetched" : `${s.status} · ${s.recordCount ?? 0}`}</span>
         </li>
       ))}
     </ul>
@@ -109,6 +110,7 @@ export function CandidateRow({ c, active, onHover, onSelect }: { c: CandidateLoc
         <div className="mt-3 pl-7">
           <p className="mb-3 text-xs leading-relaxed text-muted-foreground">{c.rationale}</p>
           <ScoreBars c={c} compact />
+          {c.features && <dl className="mt-3 space-y-2">{Object.entries(c.features).map(([key, f]) => <div key={key}><dt className="text-xs font-medium">{key}: {f.value ?? "Unavailable"} {f.unit}</dt><dd className="text-xs text-muted-foreground">{f.method} · {f.source}{f.warning && ` · ${f.warning}`}</dd></div>)}</dl>}
           <div className="label-tech mt-3 text-muted-foreground">Uncertainty · {c.uncertainty}</div>
         </div>
       )}

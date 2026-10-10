@@ -1,31 +1,35 @@
 import type { Investigation } from "@/types";
 import { getDemoInvestigation, investigations, matchQuestion } from "@/lib/demo/fixtures";
 
-/**
- * Centralized API client. When VITE_API_BASE_URL is unset the app runs in
- * DEMO MODE using deterministic fixtures and makes no network requests.
- * Intended backend contracts (not yet existing):
- *   POST /api/investigations         GET /api/investigations/:id
- *   GET  /api/investigations/:id/events|candidates|evidence   GET /api/health
- */
-const BASE = (import.meta.env["VITE_API_BASE_URL"] as string | undefined)?.replace(/\/$/, "");
-
-export const isDemoMode = !BASE;
+const BASE = ((import.meta.env["VITE_API_BASE_URL"] as string | undefined) || "http://localhost:8000").replace(/\/$/, "");
+export const isDemoMode = import.meta.env["VITE_DEMO_MODE"] === "true";
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { ...init, headers: { "Content-Type": "application/json", ...init?.headers } });
-  if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, { ...init, signal: AbortSignal.timeout(15000), headers: { "Content-Type": "application/json", ...init?.headers } });
+  } catch {
+    throw new Error(`Cannot connect to SiteSignal backend at ${BASE}. Start FastAPI on port 8000 and check CORS_ORIGINS.`);
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : `API ${res.status}: ${path}`);
+  }
   return res.json() as Promise<T>;
 }
 
 export const api = {
   async listInvestigations(): Promise<Investigation[]> {
-    if (isDemoMode) return investigations;
-    return http("/api/investigations");
+    return isDemoMode ? investigations : http("/api/investigations");
   },
   async getInvestigation(id: string): Promise<Investigation | null> {
-    if (isDemoMode) return getDemoInvestigation(id) ?? null;
+    // Landing previews link to explicitly labeled demo reports.
+    const demo = getDemoInvestigation(id);
+    if (demo) return demo;
     return http(`/api/investigations/${encodeURIComponent(id)}`);
+  },
+  async capabilities(): Promise<{ aiAvailable: boolean; missingConfiguration: string[] }> {
+    return http("/api/capabilities");
   },
   async createInvestigation(question: string, area?: string): Promise<Investigation> {
     if (isDemoMode) return matchQuestion(`${question} ${area ?? ""}`);

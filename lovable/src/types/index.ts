@@ -21,6 +21,8 @@ export interface AgentExecutionStep {
   label: string;
   detail: string;
   durationMs: number;
+  timestamp?: string;
+  status?: "running" | "done" | "failed" | "skipped";
 }
 
 export interface DataSource {
@@ -30,7 +32,11 @@ export interface DataSource {
   url: string;
   kind: "public-dataset" | "api" | "derived";
   /** "sample" = illustrative reference; not fetched in demo mode */
-  status: "sample" | "fetched";
+  status: "sample" | "fetched" | "cached" | "failed";
+  retrievedAt?: string;
+  recordCount?: number;
+  parameters?: Record<string, unknown>;
+  warnings?: string[];
   freshness: string;
 }
 
@@ -59,6 +65,10 @@ export interface CandidateLocation {
   weaknesses: string[];
   uncertainty: "low" | "medium" | "high";
   evidenceIds: string[];
+  geometry?: { type: "Polygon" | "MultiPolygon"; coordinates: number[][][] | number[][][][] };
+  totalScore?: number;
+  features?: Record<string, { value: number | null; unit: string; source: string; method: string; warning?: string | null }>;
+  sourceRecordIds?: Record<string, string[]>;
 }
 
 export interface MapLayer {
@@ -74,6 +84,11 @@ export interface InvestigationReport {
   findings: string[];
   limitations: string[];
   rankingExplanation: string;
+  aiGenerated?: boolean;
+  aiStatus?: string;
+  aiExplanation?: string[];
+  sensitivity?: Record<string, { weightMultiplier: number; topCandidate: string; topChanged: boolean }>;
+  weights?: Record<string, number>;
 }
 
 export interface Investigation {
@@ -81,7 +96,7 @@ export interface Investigation {
   title: string;
   question: InvestigationQuestion;
   area: GeographicArea;
-  status: "complete" | "running" | "draft";
+  status: "complete" | "running" | "draft" | "queued" | "completed" | "completed_with_warnings" | "failed";
   createdAt: string;
   steps: AgentExecutionStep[];
   candidates: CandidateLocation[];
@@ -90,4 +105,7 @@ export interface Investigation {
   layers: MapLayer[];
   report: InvestigationReport;
   isDemo: boolean;
+  dataMode?: "live" | "cached" | "mixed";
+  warnings?: string[];
+  records?: Record<string, unknown>;
 }

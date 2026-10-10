@@ -1,7 +1,8 @@
+import { api } from "@/lib/api/client";
 import { useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Download, Printer, Share2, Check } from "lucide-react";
-import { getDemoInvestigation, totalScore } from "@/lib/demo/fixtures";
+import { totalScore } from "@/lib/demo/fixtures";
 import { SiteFooter, SiteHeader } from "@/components/layout/SiteHeader";
 import { InvestigationMap } from "@/components/map/InvestigationMap";
 import { DemoBadge, EvidenceTrail, ScoreBars, Timeline } from "@/components/investigation/parts";
@@ -9,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/investigations/$id")({
-  loader: ({ params }) => {
-    const inv = getDemoInvestigation(params.id);
+  loader: async ({ params }) => {
+    const inv = await api.getInvestigation(params.id);
     if (!inv) throw notFound();
     return { inv };
   },
@@ -36,7 +37,7 @@ function ReportNotFound() {
       <SiteHeader />
       <div className="mx-auto max-w-xl px-6 py-32 text-center">
         <h1 className="display-lg">No investigation here.</h1>
-        <p className="mt-4 text-muted-foreground">This report ID doesn't match any demo investigation.</p>
+        <p className="mt-4 text-muted-foreground">This investigation ID could not be found.</p>
         <Button asChild className="mt-8"><Link to="/investigate">Open the workspace</Link></Button>
       </div>
     </div>
@@ -69,7 +70,7 @@ function Report() {
         <div className="flex flex-col justify-between gap-6 border-b border-border pb-10 md:flex-row md:items-end">
           <div>
             <div className="mb-4 flex flex-wrap items-center gap-3">
-              <DemoBadge />
+              <DemoBadge isDemo={inv.isDemo} mode={inv.dataMode} />
               <span className="label-tech text-muted-foreground">Status · {inv.status}</span>
               <span className="label-tech text-muted-foreground">{inv.area.name}, {inv.area.region} · {inv.area.center[1].toFixed(4)}° N / {Math.abs(inv.area.center[0]).toFixed(4)}° W</span>
             </div>
@@ -90,6 +91,8 @@ function Report() {
           <div>
             <div className="label-tech mb-3 text-muted-foreground">Findings</div>
             <p className="text-lg leading-relaxed">{inv.report.summary}</p>
+            {inv.report.aiStatus && <p className="mt-4 text-xs text-muted-foreground">{inv.report.aiStatus}</p>}
+            {inv.report.aiExplanation?.map((line) => <p key={line} className="mt-2 text-sm">{line}</p>)}
             <ul className="mt-6 space-y-3">
               {inv.report.findings.map((f, i) => (
                 <li key={f} className="flex gap-3 text-sm"><span className="label-tech text-primary">F{i + 1}</span>{f}</li>
@@ -137,6 +140,8 @@ function Report() {
               <div className="label-tech mb-1 text-muted-foreground">Candidate 0{c.rank}</div>
               <h3 className="mb-4 text-lg font-medium">{c.name}</h3>
               <ScoreBars c={c} />
+              {c.features && <dl className="mt-4 space-y-2 text-xs">{Object.entries(c.features).map(([key, f]) => <div key={key}><dt>{key}: {f.value ?? "Unavailable"} {f.unit}</dt><dd className="text-muted-foreground">{f.method} · source {f.source} · {f.warning}</dd></div>)}</dl>}
+              {c.sourceRecordIds && <details className="mt-3 text-xs"><summary>Source record IDs</summary><pre className="max-h-40 overflow-auto whitespace-pre-wrap">{JSON.stringify(c.sourceRecordIds, null, 2)}</pre></details>}
               <p className="mt-4 text-sm text-muted-foreground">{c.rationale}</p>
             </div>
           ))}
@@ -146,6 +151,7 @@ function Report() {
           <div>
             <h2 className="mb-4 text-2xl font-medium tracking-tight">Evidence</h2>
             <EvidenceTrail items={inv.evidence} sources={inv.sources} />
+            {inv.records && <details className="mt-6 text-sm"><summary>Inspect normalized source records and identifiers</summary><pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(inv.records, null, 2)}</pre></details>}
             <h3 className="label-tech mb-3 mt-10 text-muted-foreground">Data provenance & freshness</h3>
             <ul className="divide-y divide-border border-y border-border text-sm">
               {inv.sources.map((s) => (
@@ -159,6 +165,7 @@ function Report() {
           <div>
             <h2 className="mb-4 text-2xl font-medium tracking-tight">Execution timeline</h2>
             <Timeline steps={inv.steps} />
+            {inv.report.sensitivity && <details className="mt-5 text-sm"><summary>Weight sensitivity (+20% per dimension)</summary>{Object.entries(inv.report.sensitivity).map(([dimension, result]) => <p key={dimension}>{dimension}: top {result.topCandidate} · {result.topChanged ? "top changes" : "top unchanged"}</p>)}</details>}
             <h3 className="label-tech mb-3 mt-10 text-muted-foreground">Limitations & uncertainties</h3>
             <ul className="space-y-2 text-sm">
               {inv.report.limitations.map((l) => <li key={l} className="border-l-2 border-signal pl-3">{l}</li>)}

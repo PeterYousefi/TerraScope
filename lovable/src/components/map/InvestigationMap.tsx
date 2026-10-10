@@ -6,7 +6,18 @@ import type { Investigation } from "@/types";
 import { totalScore } from "@/lib/demo/fixtures";
 import { cn } from "@/lib/utils";
 
-const STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+const STYLE = import.meta.env["VITE_MAP_STYLE_URL"] || (import.meta.env["VITE_MAPTILER_API_KEY"] ? `https://api.maptiler.com/maps/positron/style.json?key=${encodeURIComponent(import.meta.env["VITE_MAPTILER_API_KEY"])}` : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json");
+
+function popupContent(title: string, label: string, detail: string) {
+  const el = document.createElement("div");
+  for (const text of [title, label, detail]) {
+    const line = document.createElement("div");
+    line.textContent = text;
+    line.style.marginTop = "4px";
+    el.appendChild(line);
+  }
+  return el;
+}
 
 /** Resolve a CSS color token into an rgb() string MapLibre can parse. */
 function token(name: string) {
@@ -83,6 +94,21 @@ export function InvestigationMap({ investigation, activeLayers, showCandidates =
     const ml = lib.current;
     if (!m || !ml || status !== "ready") return;
     const colors = { primary: token("--primary"), signal: token("--signal"), ink: token("--foreground") };
+    // Remove stale layers when switching from previews to saved investigations.
+    for (const layer of m.getStyle().layers ?? []) {
+      if (layer.id.startsWith("layer-") && !investigation.layers.some((l) => `layer-${l.id}` === layer.id)) {
+        m.removeLayer(layer.id); if (m.getSource(layer.id)) m.removeSource(layer.id);
+      }
+    }
+    const zoneData = { type: "FeatureCollection" as const, features: showCandidates ? investigation.candidates.filter((c) => c.geometry).map((c) => ({ type: "Feature" as const, properties: { id: c.id, score: totalScore(c) }, geometry: c.geometry! })) : [] };
+    const zoneSource = m.getSource("candidate-zones") as GeoJSONSource | undefined;
+    if (zoneSource) zoneSource.setData(zoneData as Parameters<GeoJSONSource["setData"]>[0]);
+    else {
+      m.addSource("candidate-zones", { type: "geojson", data: zoneData as Parameters<GeoJSONSource["setData"]>[0] });
+      m.addLayer({ id: "candidate-zones-fill", source: "candidate-zones", type: "fill", paint: { "fill-color": colors.signal, "fill-opacity": .08 } });
+      m.addLayer({ id: "candidate-zones-line", source: "candidate-zones", type: "line", paint: { "line-color": colors.signal, "line-width": 1 } });
+      m.on("click", "candidate-zones-fill", (e) => { const id = e.features?.[0]?.properties?.["id"]; if (typeof id === "string") cb.current.onSelect?.(id); });
+    }
     investigation.layers.forEach((l) => {
       const id = `layer-${l.id}`;
       const data = { type: "FeatureCollection" as const, features: l.points.map((p) => ({ type: "Feature" as const, properties: { label: p.label, value: p.value ?? 0 }, geometry: { type: "Point" as const, coordinates: p.coords } })) };
@@ -103,7 +129,7 @@ export function InvestigationMap({ investigation, activeLayers, showCandidates =
           if (!f) return;
           new ml.Popup({ offset: 8, closeButton: false })
             .setLngLat(e.lngLat)
-            .setHTML(`<div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6">${l.label}</div><div style="font-size:13px;margin-top:2px">${f.properties?.["label"]}</div><div style="font-size:10px;opacity:.6;margin-top:4px">Illustrative demo value</div>`)
+            .setDOMContent(popupContent(l.label, String(f.properties?.["label"] ?? ""), investigation.isDemo ? "Illustrative demo value" : "Retrieved source / calculated proxy"))
             .addTo(m);
         });
         m.on("mouseenter", id, () => (m.getCanvas().style.cursor = "pointer"));
@@ -123,8 +149,8 @@ export function InvestigationMap({ investigation, activeLayers, showCandidates =
         node.onclick = (ev) => { ev.stopPropagation(); cb.current.onSelect?.(c.id); };
         node.onmouseenter = () => cb.current.onHover?.(c.id);
         node.onmouseleave = () => cb.current.onHover?.(null);
-        const popup = new ml.Popup({ offset: 18, closeButton: false }).setHTML(
-          `<div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6">Candidate 0${c.rank}</div><div style="font-size:14px;font-weight:500;margin-top:2px">${c.name}</div><div style="font-size:12px;margin-top:4px">Score ${totalScore(c)} <span style="opacity:.6">(illustrative)</span></div>`,
+        const popup = new ml.Popup({ offset: 18, closeButton: false }).setDOMContent(
+          popupContent(`Opportunity area ${c.rank}`, c.name, `Score ${totalScore(c)} (${investigation.isDemo ? "illustrative" : "calculated screening proxy"})`),
         );
         const mk = new ml.Marker({ element: node }).setLngLat(c.coords).setPopup(popup).addTo(m);
         markers.current.set(c.id, { m: mk, el: node });
@@ -191,7 +217,7 @@ export function InvestigationMap({ investigation, activeLayers, showCandidates =
             <Maximize2 className="size-3" /> Fit area
           </button>
           <div className="absolute bottom-8 right-3 border border-border bg-paper/95 p-3">
-            <div className="label-tech mb-2 text-muted-foreground">Legend · demo</div>
+            <div className="label-tech mb-2 text-muted-foreground">Legend · {investigation.isDemo ? "demo" : "real data / proxies"}</div>
             <ul className="space-y-1.5 text-xs">
               <li className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-foreground" /> Existing supply</li>
               <li className="flex items-center gap-2"><span className="size-2.5 rounded-full border border-primary bg-primary/20" /> Demand signal</li>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Layers, Plus, Search, FileText } from "lucide-react";
 import { investigations } from "@/lib/demo/fixtures";
@@ -29,34 +29,66 @@ const TYPES = [
 ];
 
 function Workspace() {
-  const [inv, setInv] = useState<Investigation>(investigations[0]);
-  const [question, setQuestion] = useState(investigations[0].question.text);
+  const empty: Investigation = { ...investigations[0]!, id: "", isDemo: false, status: "draft", steps: [], candidates: [], sources: [], evidence: [], layers: [], report: { summary: "Submit an Austin EV charging question to retrieve real public datasets.", findings: [], limitations: [], rankingExplanation: "" } };
+  const [inv, setInv] = useState<Investigation>(isDemoMode ? investigations[0]! : empty);
+  const [recent, setRecent] = useState<Investigation[]>([]);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [setup, setSetup] = useState("");
+  const [question, setQuestion] = useState(investigations[0]!.question.text);
   const [area, setArea] = useState("Austin");
-  const [step, setStep] = useState(inv.steps.length);
   const [layers, setLayers] = useState<string[]>(["existing", "demand", "gap"]);
   const [hover, setHover] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<"controls" | "map" | "results">("map");
-  const timers = useRef<number[]>([]);
-  const running = step < inv.steps.length;
+  const running = submitting || inv.status === "queued" || inv.status === "running";
+  const step = inv.steps.length;
 
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  useEffect(() => {
+    let cancelled = false;
+    api.listInvestigations().then((items) => {
+      if (cancelled) return;
+      setRecent(items);
+      if (items[0]) setInv(items[0]);
+    }).catch((e) => { if (!cancelled) setError(e.message); });
+    if (!isDemoMode) api.capabilities().then((c) => {
+      if (!cancelled) setSetup(c.missingConfiguration.length ? `Setup required: ${c.missingConfiguration.join(", ")}. Analysis cannot rank zones until charging data are available.` : "Live public-data analysis configured.");
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!inv.id || (inv.status !== "queued" && inv.status !== "running")) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const next = await api.getInvestigation(inv.id);
+        if (cancelled || !next) return;
+        setInv(next);
+        setError("");
+        setRecent((items) => [next, ...items.filter((i) => i.id !== next.id)]);
+        if (next.status === "queued" || next.status === "running") timer = setTimeout(poll, 1500);
+      } catch (e) {
+        if (!cancelled) { setError((e as Error).message); timer = setTimeout(poll, 3000); }
+      }
+    };
+    timer = setTimeout(poll, 500);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [inv.id, inv.status]);
 
   const run = async (q: string, a: string) => {
-    timers.current.forEach(clearTimeout);
-    const next = await api.createInvestigation(q, a);
-    setInv(next);
-    setArea(next.area.name);
-    setSelected(null);
-    setStep(0);
-    setTab("results");
-    let t = 0;
-    timers.current = next.steps.map((s, i) => { t += s.durationMs; return window.setTimeout(() => setStep(i + 1), t); });
+    setSubmitting(true); setError("");
+    try {
+      const next = await api.createInvestigation(q, a);
+      setInv(next); setArea(next.area.name); setSelected(null); setTab("results");
+      setRecent((items) => [next, ...items.filter((i) => i.id !== next.id)]);
+    } catch (e) { setError((e as Error).message); }
+    finally { setSubmitting(false); }
   };
 
   const loadRecent = (i: Investigation) => {
-    timers.current.forEach(clearTimeout);
-    setInv(i); setQuestion(i.question.text); setArea(i.area.name); setStep(i.steps.length); setSelected(null);
+    setInv(i); setQuestion(i.question.text); setArea(i.area.name); setSelected(null);
   };
 
   const controls = (
@@ -64,28 +96,30 @@ function Workspace() {
       <Button variant="outline" onClick={() => { setQuestion(""); setSelected(null); }} className="justify-start"><Plus /> New investigation</Button>
       <form onSubmit={(e) => { e.preventDefault(); if (question.trim()) run(question, area); }} className="space-y-3">
         <label htmlFor="q" className="label-tech text-muted-foreground">Question</label>
-        <textarea id="q" value={question} onChange={(e) => setQuestion(e.target.value)} rows={4} placeholder="Where could Chicago benefit from additional bike-share stations?" className="w-full resize-none border border-input bg-paper p-3 text-sm outline-none focus:border-primary" />
+        <textarea id="q" value={question} onChange={(e) => setQuestion(e.target.value)} rows={4} placeholder="Where should I open an EV charging station in Austin?" className="w-full resize-none border border-input bg-paper p-3 text-sm outline-none focus:border-primary" />
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label htmlFor="area" className="label-tech text-muted-foreground">Area</label>
             <select id="area" value={area} onChange={(e) => setArea(e.target.value)} className="mt-1 w-full border border-input bg-paper p-2 text-sm">
-              {investigations.map((i) => <option key={i.id}>{i.area.name}</option>)}
+              {(isDemoMode ? investigations : [investigations[0]!]).map((i) => <option key={i.id}>{i.area.name}</option>)}
             </select>
           </div>
           <div>
             <label htmlFor="type" className="label-tech text-muted-foreground">Type</label>
             <select id="type" value={inv.question.type} onChange={(e) => { const m = investigations.find((i) => i.question.type === e.target.value); if (m) { setArea(m.area.name); setQuestion(m.question.text); } }} className="mt-1 w-full border border-input bg-paper p-2 text-sm">
-              {TYPES.map((t) => <option key={t.v} value={t.v}>{t.l}</option>)}
+              {(isDemoMode ? TYPES : TYPES.slice(0, 1)).map((t) => <option key={t.v} value={t.v}>{t.l}</option>)}
             </select>
           </div>
         </div>
         <Button type="submit" className="w-full" disabled={running || !question.trim()}><Search /> {running ? "Investigating…" : "Investigate"}</Button>
         {isDemoMode && <p className="text-xs text-muted-foreground">Demo mode: questions are matched to one of three prewritten investigations.</p>}
       </form>
+      {setup && <p className="text-xs text-muted-foreground">{setup}</p>}
+      {error && <p role="alert" className="border-l-2 border-signal pl-3 text-sm">{error}</p>}
       <div>
         <div className="label-tech mb-2 text-muted-foreground">Recent</div>
         <ul className="space-y-1">
-          {investigations.map((i) => (
+          {recent.map((i) => (
             <li key={i.id}>
               <button type="button" onClick={() => loadRecent(i)} className={cn("w-full px-2 py-2 text-left text-sm hover:bg-muted", inv.id === i.id && "bg-muted")}>
                 {i.title}
@@ -117,11 +151,11 @@ function Workspace() {
   const results = (
     <div className="flex h-full flex-col overflow-y-auto">
       <div className="border-b border-border p-5">
-        <div className="mb-2 flex items-center gap-2"><DemoBadge /><span className="label-tech text-muted-foreground">{inv.area.name}, {inv.area.region}</span></div>
+        <div className="mb-2 flex items-center gap-2"><DemoBadge isDemo={inv.isDemo} mode={inv.dataMode} /><span className="label-tech text-muted-foreground">{inv.area.name}, {inv.area.region}</span></div>
         <h1 className="text-lg font-medium leading-snug">{inv.question.text}</h1>
       </div>
       <div className="border-b border-border p-5">
-        <div className="label-tech mb-4 text-muted-foreground">Agent activity {running && `· step ${step + 1}/${inv.steps.length}`}</div>
+        <div className="label-tech mb-4 text-muted-foreground">Execution activity · {inv.status}</div>
         <Timeline steps={inv.steps} current={step} />
       </div>
       <div className={cn("transition-opacity duration-500", running ? "pointer-events-none opacity-30" : "opacity-100")}>
@@ -130,19 +164,21 @@ function Workspace() {
           <p className="text-sm leading-relaxed">{inv.report.summary}</p>
         </div>
         <div className="border-b border-border py-3">
-          <div className="label-tech mb-2 px-5 text-muted-foreground">Ranked candidates · illustrative scores</div>
+          <div className="label-tech mb-2 px-5 text-muted-foreground">Ranked opportunity areas · {inv.isDemo ? "illustrative scores" : "calculated scores"}</div>
           {inv.candidates.map((c) => (
             <CandidateRow key={c.id} c={c} active={hover === c.id || selected === c.id} onHover={setHover} onSelect={(id) => { setSelected(id); setTab("map"); }} />
           ))}
         </div>
         <div className="p-5">
+          {inv.report.aiStatus && <p className="mb-3 text-xs text-muted-foreground">{inv.report.aiStatus}</p>}
+          {inv.warnings?.map((w) => <p key={w} className="mb-2 border-l-2 border-signal pl-2 text-xs">{w}</p>)}
           <div className="label-tech mb-2 text-muted-foreground">Evidence</div>
           <EvidenceTrail items={inv.evidence} sources={inv.sources} />
           <details className="mt-4 text-sm">
             <summary className="label-tech cursor-pointer text-muted-foreground">Methodology</summary>
             <p className="mt-2 text-muted-foreground">{inv.report.rankingExplanation}</p>
           </details>
-          <Button asChild variant="ink" className="mt-5 w-full">
+          <Button asChild variant="ink" className="mt-5 w-full" disabled={!inv.id}>
             <Link to="/investigations/$id" params={{ id: inv.id }}><FileText /> Open full report <ArrowRight /></Link>
           </Button>
         </div>
@@ -157,6 +193,7 @@ function Workspace() {
         <nav className="flex items-center gap-5">
           <Link to="/compare" className="label-tech text-muted-foreground hover:text-foreground">Compare</Link>
           <Link to="/methodology" className="label-tech hidden text-muted-foreground hover:text-foreground sm:inline">Methodology</Link>
+          {!isDemoMode && <span className="label-tech">Local live analysis</span>}
           {isDemoMode && <span className="label-tech border border-signal/60 px-2 py-1">Demo mode</span>}
         </nav>
       </header>

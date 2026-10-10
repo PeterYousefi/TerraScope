@@ -1,6 +1,7 @@
+import { api } from "@/lib/api/client";
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { investigations, totalScore } from "@/lib/demo/fixtures";
+import { totalScore } from "@/lib/demo/fixtures";
 import type { CandidateLocation } from "@/types";
 import { SiteFooter, SiteHeader } from "@/components/layout/SiteHeader";
 import { InvestigationMap } from "@/components/map/InvestigationMap";
@@ -17,6 +18,12 @@ export const Route = createFileRoute("/compare")({
       { property: "og:description", content: "Weigh strengths, weaknesses and evidence for two or three candidate sites." },
     ],
   }),
+  loaderDeps: ({ search }) => ({ inv: search.inv }),
+  loader: async ({ deps }) => {
+    const items = await api.listInvestigations();
+    const selected = deps.inv ? await api.getInvestigation(deps.inv) : items[0];
+    return { investigations: selected && !items.some((i) => i.id === selected.id) ? [selected, ...items] : items, selected };
+  },
   component: Compare,
 });
 
@@ -47,9 +54,14 @@ function Radar({ cands }: { cands: CandidateLocation[] }) {
 }
 
 function Compare() {
-  const search = Route.useSearch();
-  const [invId, setInvId] = useState(search.inv ?? investigations[0].id);
-  const inv = investigations.find((i) => i.id === invId) ?? investigations[0];
+  const { investigations, selected } = Route.useLoaderData();
+  if (!selected) return <div><SiteHeader /><p className="p-10">No persisted investigations yet. <Link to="/investigate">Start an Austin investigation</Link></p></div>;
+  return <Comparison investigations={investigations} initial={selected} />;
+}
+
+function Comparison({ investigations, initial }: { investigations: import("@/types").Investigation[]; initial: import("@/types").Investigation }) {
+  const [invId, setInvId] = useState(initial.id);
+  const inv = investigations.find((i) => i.id === invId) ?? initial;
   const [picked, setPicked] = useState<string[]>(inv.candidates.slice(0, 2).map((c) => c.id));
   const cands = useMemo(() => inv.candidates.filter((c) => picked.includes(c.id)), [inv, picked]);
 
@@ -62,8 +74,8 @@ function Compare() {
     const top = sorted[0]!, next = sorted[1]!;
     const diffs = top.scores.map((s, i) => ({ d: s.dimension, v: s.value - next.scores[i]!.value })).sort((a, b) => b.v - a.v);
     const lead = diffs[0]!, lag = diffs[diffs.length - 1]!;
-    return `${top.name} leads ${next.name} by ${totalScore(top) - totalScore(next)} points overall, driven mostly by ${lead.d.toLowerCase()} (+${lead.v}).${lag.v < 0 ? ` ${next.name} is stronger on ${lag.d.toLowerCase()} (${lag.v}).` : ""} Uncertainty is ${top.uncertainty} vs ${next.uncertainty}. All values are illustrative demo scores.`;
-  }, [cands]);
+    return `${top.name} leads ${next.name} by ${totalScore(top) - totalScore(next)} points overall, driven mostly by ${lead.d.toLowerCase()} (+${lead.v}).${lag.v < 0 ? ` ${next.name} is stronger on ${lag.d.toLowerCase()} (${lag.v}).` : ""} Uncertainty is ${top.uncertainty} vs ${next.uncertainty}. ${inv.isDemo ? "All values are illustrative demo scores." : "Scores are calculated screening proxies; weights are assumptions."}`;
+  }, [cands, inv.isDemo]);
 
   return (
     <div className="min-h-svh bg-background">
@@ -71,7 +83,7 @@ function Compare() {
       <main className="mx-auto max-w-[1400px] px-6 py-14 md:px-10">
         <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <div>
-            <div className="mb-4 flex items-center gap-3"><DemoBadge /><span className="label-tech text-muted-foreground">Comparison</span></div>
+            <div className="mb-4 flex items-center gap-3"><DemoBadge isDemo={inv.isDemo} mode={inv.dataMode} /><span className="label-tech text-muted-foreground">Comparison</span></div>
             <h1 className="display-lg">Compare candidate locations.</h1>
           </div>
           <div className="flex gap-1 border border-border bg-paper p-1" role="tablist">
