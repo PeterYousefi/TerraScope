@@ -8,6 +8,7 @@ from typing import Any
 
 import httpx
 from pydantic import BaseModel, Field, ValidationError
+from shapely import make_valid
 from shapely.geometry import shape
 
 from .models import Source
@@ -164,12 +165,21 @@ class Providers:
         if len(features) != 1 or not features[0].get("geometry"):
             raise ProviderError("Official Austin place boundary unavailable or schema changed")
         geometry = features[0]["geometry"]
-        if not shape(geometry).is_valid:
-            raise ProviderError("Invalid Austin boundary geometry")
+        warnings = []
+        g = shape(geometry)
+        if not g.is_valid:
+            from shapely.geometry import mapping
+            repaired = make_valid(g)
+            if repaired.geom_type not in ("Polygon", "MultiPolygon") or repaired.is_empty:
+                raise ProviderError("Austin boundary cannot be repaired to valid polygons")
+            geometry = mapping(repaired)
+            warnings.append("Official boundary topology repaired with Shapely make_valid before analysis")
         return geometry, self.source("boundary", "Austin incorporated place boundary", "US Census",
-                                     url, at, cached, 1, params, vintage="TIGERweb current")
+                                     url, at, cached, 1, params, warnings, vintage="TIGERweb current")
 
     async def census(self):
+        if not self.settings.census_api_key:
+            raise ProviderError("CENSUS_API_KEY is required: Census requires a free activated key for all data queries since May 2026")
         year = self.settings.acs_year
         url = f"https://api.census.gov/data/{year}/acs/acs5"
         params = {"get": "NAME,B01003_001E,B11001_001E,B19013_001E,B08301_001E",
@@ -235,7 +245,7 @@ class Providers:
         bounds = f"({south},{west},{north},{east})"
         query = f'''[out:json][timeout:45][maxsize:33554432];(
         nwr[amenity=parking]{bounds};nwr[shop=supermarket]{bounds};
-        nwr[shop=mall]{bounds};nwr[amenity=restaurant]{bounds};
+        nwr[shop=mall]{bounds};
         way[highway~"^(motorway|trunk|primary|secondary)$"]{bounds};);out center geom;'''
         url = "https://overpass-api.de/api/interpreter"
         body, at, cached = await self.request(url, data={"data": query}, ttl=7*86400)
@@ -264,6 +274,6 @@ class Providers:
             records.append({"id": id, "lon": lon, "lat": lat, "tags": tags,
                             "road": "highway" in tags, "geometry": r.get("geometry", [])})
         warnings.append("OSM is volunteered mapping; absent destinations do not prove absence.")
-        return records, self.source("osm", "Parking, supermarkets, malls, restaurants and major roads",
+        return records, self.source("osm", "Parking, supermarkets, malls and major roads",
                                     "OpenStreetMap contributors", url, at, cached, len(records),
                                     {"bbox": BBOX, "query": query}, warnings)

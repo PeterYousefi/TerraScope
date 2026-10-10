@@ -18,6 +18,10 @@ async def run(inv, settings, store, providers):
     tool_start = 0
 
     def event(tool, label, detail, status="done", duration=0):
+        if status != "running":
+            for prior in inv.steps:
+                if prior.agent == tool and prior.status == "running":
+                    prior.status = "failed" if status == "failed" else "done"
         inv.steps.append(Event(id=f"event-{len(inv.steps)+1}", agent=tool, label=label,
                                detail=detail, timestamp=now(), status=status, durationMs=duration))
         store.save(inv)
@@ -61,7 +65,7 @@ async def run(inv, settings, store, providers):
                 plan = await ai.plan(inv.question.text)
                 inv.report.planner = "OpenAI structured tool planner"
                 inv.report.tokenUsage["planning"] = ai.usage
-            except (ProviderError, ValueError, Exception) as exc:
+            except Exception as exc:
                 # Do not log exception text from HTTPX: it can contain request secrets.
                 inv.warnings.append(f"OpenAI planning failed ({type(exc).__name__}); using deterministic supported planner")
                 plan = Plan(area="Austin, Texas", investigation_type="ev-charging", tools=TOOLS)
@@ -77,7 +81,7 @@ async def run(inv, settings, store, providers):
         if stations is None or tracts is None:
             raise ProviderError("Ranking requires successful NLR charging data and Census population/geometry. Review provider warnings.")
         start = time.monotonic()
-        event("spatial_analysis", "Calculating candidate features", "Projected grid, 2 km catchments, area-weighted demographics", "running")
+        event("spatial_analysis", "Calculating candidate features", f"Projected grid, {settings.catchment_meters} m catchments, area-weighted demographics", "running")
         candidates, evidence, sensitivity, warnings = await asyncio.to_thread(
             analyze, boundary, stations, tracts, osm, settings)
         inv.candidates, inv.evidence = candidates, evidence

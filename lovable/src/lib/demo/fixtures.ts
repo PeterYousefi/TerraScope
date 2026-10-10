@@ -197,8 +197,8 @@ export const investigations: [Investigation, Investigation, Investigation] = [
   },
 ];
 
-export const totalScore = (c: { scores: { value: number; weight: number }[] }) =>
-  Math.round(c.scores.reduce((s, d) => s + d.value * d.weight, 0));
+export const totalScore = (c: { scores: { value: number; weight: number }[]; totalScore?: number }) =>
+  Math.round(c.totalScore ?? c.scores.reduce((s, d) => s + d.value * d.weight, 0));
 
 export const getDemoInvestigation = (id: string) => investigations.find((i) => i.id === id);
 

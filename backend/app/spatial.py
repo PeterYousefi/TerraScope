@@ -2,11 +2,17 @@
 import math
 
 from pyproj import Transformer
+from shapely import transform as shapely_transform
 from shapely.geometry import LineString, Point, box, mapping, shape
-from shapely.ops import transform, unary_union
+from shapely.ops import unary_union
 
 from .models import Candidate, Evidence, Feature, Score
 from .providers import BBOX
+
+
+def transform(fn, geom):
+    return shapely_transform(geom, fn, interleaved=False)
+
 
 PROJECT = Transformer.from_crs(4326, 32614, always_xy=True).transform
 UNPROJECT = Transformer.from_crs(32614, 4326, always_xy=True).transform
@@ -80,11 +86,14 @@ def analyze(boundary, stations, tracts, osm, settings):
         else:
             destinations.append((r, transform(PROJECT, Point(r["lon"], r["lat"]))))
     candidates, evidence, warnings = [], [], []
+    acquisition_bounds = transform(PROJECT, box(*BBOX))
     if not stations:
         warnings.append("NLR returned no valid stations in study bounds; inspect supply coverage before relying on ranking.")
     for id, cell in zones:
         point = cell.representative_point()
         catchment = point.buffer(settings.catchment_meters)
+        if not acquisition_bounds.covers(catchment):
+            continue
         matched = [(r, g, g.intersection(catchment).area/g.area) for r, g in tract_geoms
                    if g.area > 0 and g.intersects(catchment)]
         valid_pop = [(r, g, f) for r, g, f in matched if r["population"] is not None]
@@ -93,6 +102,11 @@ def analyze(boundary, stations, tracts, osm, settings):
             continue
         pop = sum(r["population"]*f for r, _, f in valid_pop)
         households = sum(r["households"]*f for r, _, f in matched if r["households"] is not None)
+        commuters = sum(r.get("commuters", 0)*f for r, _, f in matched if r.get("commuters") is not None)
+        has_commuters = all(r.get("commuters") is not None for r, _, _ in matched)
+        income_rows = [(r, f) for r, _, f in matched if r.get("medianIncome") is not None and r.get("households") is not None]
+        income_weight = sum(r["households"]*f for r, f in income_rows)
+        income_proxy = sum(r["medianIncome"]*r["households"]*f for r, f in income_rows)/income_weight if income_weight else None
         has_households = all(r["households"] is not None for r, _, _ in matched)
         nearby = [(r, p) for r, p in station_points if p.distance(point) <= settings.catchment_meters]
         amenities = [(r, p) for r, p in destinations if p.distance(point) <= settings.catchment_meters]
@@ -108,6 +122,12 @@ def analyze(boundary, stations, tracts, osm, settings):
             "households": feature(round(households, 1) if has_households else None,
                                   "estimated households", "census", "Area-weighted tract sum",
                                   None if has_households else "Some household estimates unavailable"),
+            "commuters": feature(round(commuters, 1) if has_commuters else None,
+                                 "estimated workers age 16+", "census", "Area-apportioned ACS B08301_001E total workers",
+                                 "Commute proxy; includes work-from-home and is not traffic volume"),
+            "incomeProxy": feature(round(income_proxy, 1) if income_proxy is not None else None,
+                                   "USD/year", "census", "Household-weighted mean of tract median household incomes",
+                                   "This proxy is not the catchment median income or EV ownership"),
             "populationDensity": feature(round(pop/(catchment.area/1e6), 1), "people/km²", "census",
                                          "Area-weighted population / projected catchment area"),
             "stations": feature(len(nearby), "public operating stations", "nlr",

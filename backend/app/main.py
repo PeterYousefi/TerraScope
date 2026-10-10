@@ -71,7 +71,7 @@ def create_app(settings=None, provider_factory=Providers):
     def capabilities():
         return {"supported": ["Austin, Texas: EV charging opportunity areas"],
                 "aiAvailable": settings.ai_available, "nlrConfigured": bool(settings.nlr_api_key),
-                "missingConfiguration": [k for k, value in [("NLR_API_KEY", settings.nlr_api_key)] if not value],
+                "missingConfiguration": [k for k, value in [("NLR_API_KEY", settings.nlr_api_key), ("CENSUS_API_KEY", settings.census_api_key)] if not value],
                 "routing": "Unavailable; straight-line distances only", "acsYear": settings.acs_year}
 
     @app.post("/api/investigations", response_model=Investigation, status_code=202)

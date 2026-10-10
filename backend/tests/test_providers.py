@@ -10,7 +10,7 @@ from app.store import Store
 
 @pytest.fixture
 def provider(tmp_path):
-    return Providers(Settings(nlr_api_key="test-secret", request_timeout=5),
+    return Providers(Settings(nlr_api_key="test-secret", census_api_key="census-test", request_timeout=5),
                      Store(f"sqlite:///{tmp_path}/test.db"), httpx.AsyncClient())
 
 
