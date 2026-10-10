@@ -1,15 +1,23 @@
 import type { Investigation } from "@/types";
 import { getDemoInvestigation, investigations, matchQuestion } from "@/lib/demo/fixtures";
 
-const BASE = ((import.meta.env["VITE_API_BASE_URL"] as string | undefined) || "http://localhost:8000").replace(/\/$/, "");
-export const isDemoMode = import.meta.env["VITE_DEMO_MODE"] === "true";
+const BASE = (
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) || "http://localhost:8000"
+).replace(/\/$/, "");
+export const isDemoMode = import.meta.env.VITE_DEMO_MODE === "true";
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${BASE}${path}`, { ...init, signal: AbortSignal.timeout(15000), headers: { "Content-Type": "application/json", ...init?.headers } });
+    res = await fetch(`${BASE}${path}`, {
+      ...init,
+      signal: AbortSignal.timeout(15000),
+      headers: { "Content-Type": "application/json", ...init?.headers },
+    });
   } catch {
-    throw new Error(`Cannot connect to SiteSignal backend at ${BASE}. Start FastAPI on port 8000 and check CORS_ORIGINS.`);
+    throw new Error(
+      `Cannot connect to SiteSignal backend at ${BASE}. Start FastAPI on port 8000 and check CORS_ORIGINS.`,
+    );
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -33,6 +41,9 @@ export const api = {
   },
   async createInvestigation(question: string, area?: string): Promise<Investigation> {
     if (isDemoMode) return matchQuestion(`${question} ${area ?? ""}`);
-    return http("/api/investigations", { method: "POST", body: JSON.stringify({ question, area }) });
+    return http("/api/investigations", {
+      method: "POST",
+      body: JSON.stringify({ question, area }),
+    });
   },
 };

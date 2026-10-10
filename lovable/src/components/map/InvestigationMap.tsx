@@ -6,7 +6,11 @@ import type { Investigation } from "@/types";
 import { totalScore } from "@/lib/demo/fixtures";
 import { cn } from "@/lib/utils";
 
-const STYLE = import.meta.env["VITE_MAP_STYLE_URL"] || (import.meta.env["VITE_MAPTILER_API_KEY"] ? `https://api.maptiler.com/maps/positron/style.json?key=${encodeURIComponent(import.meta.env["VITE_MAPTILER_API_KEY"])}` : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json");
+const STYLE =
+  import.meta.env.VITE_MAP_STYLE_URL ||
+  (import.meta.env.VITE_MAPTILER_API_KEY
+    ? `https://api.maptiler.com/maps/positron/style.json?key=${encodeURIComponent(import.meta.env.VITE_MAPTILER_API_KEY)}`
+    : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json");
 
 function popupContent(title: string, label: string, detail: string) {
   const el = document.createElement("div");
@@ -42,7 +46,17 @@ export interface InvestigationMapProps {
   className?: string;
 }
 
-export function InvestigationMap({ investigation, activeLayers, showCandidates = true, highlightIds, selectedId, hoverId, onSelect, onHover, className }: InvestigationMapProps) {
+export function InvestigationMap({
+  investigation,
+  activeLayers,
+  showCandidates = true,
+  highlightIds,
+  selectedId,
+  hoverId,
+  onSelect,
+  onHover,
+  className,
+}: InvestigationMapProps) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<MLMap | null>(null);
   const markers = useRef<Map<string, { m: Marker; el: HTMLElement }>>(new Map());
@@ -57,7 +71,10 @@ export function InvestigationMap({ investigation, activeLayers, showCandidates =
     let cancelled = false;
     let ro: ResizeObserver | null = null;
     (async () => {
-      const [ml, worker] = await Promise.all([import("maplibre-gl"), import("maplibre-gl/dist/maplibre-gl-worker.mjs?url")]);
+      const [ml, worker] = await Promise.all([
+        import("maplibre-gl"),
+        import("maplibre-gl/dist/maplibre-gl-worker.mjs?url"),
+      ]);
       ml.setWorkerUrl(worker.default);
       if (cancelled || !el.current) return;
       lib.current = ml;
@@ -72,8 +89,15 @@ export function InvestigationMap({ investigation, activeLayers, showCandidates =
       m.addControl(new ml.NavigationControl({ showCompass: false }), "top-right");
       m.addControl(new ml.ScaleControl({ unit: "metric" }), "bottom-left");
       m.on("mousemove", (e) => setCoord([e.lngLat.lng, e.lngLat.lat]));
-      m.on("error", () => { if (!m.isStyleLoaded()) setStatus("error"); });
-      m.on("load", () => { if (!cancelled) { m.resize(); setStatus("ready"); } });
+      m.on("error", () => {
+        if (!m.isStyleLoaded()) setStatus("error");
+      });
+      m.on("load", () => {
+        if (!cancelled) {
+          m.resize();
+          setStatus("ready");
+        }
+      });
       ro = new ResizeObserver(() => m.resize());
       ro.observe(el.current);
     })().catch(() => setStatus("error"));
@@ -93,43 +117,135 @@ export function InvestigationMap({ investigation, activeLayers, showCandidates =
     const m = map.current;
     const ml = lib.current;
     if (!m || !ml || status !== "ready") return;
-    const colors = { primary: token("--primary"), signal: token("--signal"), ink: token("--foreground") };
+    const colors = {
+      primary: token("--primary"),
+      signal: token("--signal"),
+      ink: token("--foreground"),
+    };
     // Remove stale layers when switching from previews to saved investigations.
     for (const layer of m.getStyle().layers ?? []) {
-      if (layer.id.startsWith("layer-") && !investigation.layers.some((l) => `layer-${l.id}` === layer.id)) {
-        m.removeLayer(layer.id); if (m.getSource(layer.id)) m.removeSource(layer.id);
+      if (
+        layer.id.startsWith("layer-") &&
+        !investigation.layers.some((l) => `layer-${l.id}` === layer.id)
+      ) {
+        m.removeLayer(layer.id);
+        if (m.getSource(layer.id)) m.removeSource(layer.id);
       }
     }
-    const zoneData = { type: "FeatureCollection" as const, features: showCandidates ? investigation.candidates.filter((c) => c.geometry).map((c) => ({ type: "Feature" as const, properties: { id: c.id, score: totalScore(c) }, geometry: c.geometry! })) : [] };
+    const zoneData = {
+      type: "FeatureCollection" as const,
+      features: showCandidates
+        ? investigation.candidates
+            .filter((c) => c.geometry)
+            .map((c) => ({
+              type: "Feature" as const,
+              properties: { id: c.id, score: totalScore(c) },
+              geometry: c.geometry!,
+            }))
+        : [],
+    };
     const zoneSource = m.getSource("candidate-zones") as GeoJSONSource | undefined;
     if (zoneSource) zoneSource.setData(zoneData as Parameters<GeoJSONSource["setData"]>[0]);
     else {
-      m.addSource("candidate-zones", { type: "geojson", data: zoneData as Parameters<GeoJSONSource["setData"]>[0] });
-      m.addLayer({ id: "candidate-zones-fill", source: "candidate-zones", type: "fill", paint: { "fill-color": colors.signal, "fill-opacity": .08 } });
-      m.addLayer({ id: "candidate-zones-line", source: "candidate-zones", type: "line", paint: { "line-color": colors.signal, "line-width": 1 } });
-      m.on("click", "candidate-zones-fill", (e) => { const id = e.features?.[0]?.properties?.["id"]; if (typeof id === "string") cb.current.onSelect?.(id); });
+      m.addSource("candidate-zones", {
+        type: "geojson",
+        data: zoneData as Parameters<GeoJSONSource["setData"]>[0],
+      });
+      m.addLayer({
+        id: "candidate-zones-fill",
+        source: "candidate-zones",
+        type: "fill",
+        paint: { "fill-color": colors.signal, "fill-opacity": 0.08 },
+      });
+      m.addLayer({
+        id: "candidate-zones-line",
+        source: "candidate-zones",
+        type: "line",
+        paint: { "line-color": colors.signal, "line-width": 1 },
+      });
+      m.on("click", "candidate-zones-fill", (e) => {
+        const id = e.features?.[0]?.properties?.["id"];
+        if (typeof id === "string") cb.current.onSelect?.(id);
+      });
     }
     investigation.layers.forEach((l) => {
       const id = `layer-${l.id}`;
-      const data = { type: "FeatureCollection" as const, features: l.points.map((p) => ({ type: "Feature" as const, properties: { label: p.label, value: p.value ?? 0 }, geometry: { type: "Point" as const, coordinates: p.coords } })) };
+      const data = {
+        type: "FeatureCollection" as const,
+        features: l.points.map((p) => ({
+          type: "Feature" as const,
+          properties: { label: p.label, value: p.value ?? 0 },
+          geometry: { type: "Point" as const, coordinates: p.coords },
+        })),
+      };
       const src = m.getSource(id) as GeoJSONSource | undefined;
       if (src) src.setData(data);
       else {
         m.addSource(id, { type: "geojson", data });
         const c = colors[l.color];
         if (l.kind === "demand") {
-          m.addLayer({ id, type: "circle", source: id, paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, ["/", ["get", "value"], 3], 14, ["*", ["get", "value"], 1.4]], "circle-color": c, "circle-opacity": 0.14, "circle-stroke-color": c, "circle-stroke-width": 1, "circle-stroke-opacity": 0.5, "circle-opacity-transition": { duration: 400 } } });
+          m.addLayer({
+            id,
+            type: "circle",
+            source: id,
+            paint: {
+              "circle-radius": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                9,
+                ["/", ["get", "value"], 3],
+                14,
+                ["*", ["get", "value"], 1.4],
+              ],
+              "circle-color": c,
+              "circle-opacity": 0.14,
+              "circle-stroke-color": c,
+              "circle-stroke-width": 1,
+              "circle-stroke-opacity": 0.5,
+              "circle-opacity-transition": { duration: 400 },
+            },
+          });
         } else if (l.kind === "gap") {
-          m.addLayer({ id, type: "circle", source: id, paint: { "circle-radius": 22, "circle-color": c, "circle-opacity": 0.12, "circle-stroke-color": c, "circle-stroke-width": 1.5 } });
+          m.addLayer({
+            id,
+            type: "circle",
+            source: id,
+            paint: {
+              "circle-radius": 22,
+              "circle-color": c,
+              "circle-opacity": 0.12,
+              "circle-stroke-color": c,
+              "circle-stroke-width": 1.5,
+            },
+          });
         } else {
-          m.addLayer({ id, type: "circle", source: id, paint: { "circle-radius": 5, "circle-color": c, "circle-stroke-color": "rgb(255,255,255)", "circle-stroke-width": 1.5 } });
+          m.addLayer({
+            id,
+            type: "circle",
+            source: id,
+            paint: {
+              "circle-radius": 5,
+              "circle-color": c,
+              "circle-stroke-color": "rgb(255,255,255)",
+              "circle-stroke-width": 1.5,
+            },
+          });
         }
         m.on("click", id, (e) => {
           const f = e.features?.[0];
           if (!f) return;
           new ml.Popup({ offset: 8, closeButton: false })
             .setLngLat(e.lngLat)
-            .setDOMContent(popupContent(l.label, String(f.properties?.["label"] ?? ""), investigation.isDemo ? "Illustrative demo value" : "Retrieved source / calculated proxy"))
+            .setDOMContent(
+              popupContent(
+                l.label,
+                String(f.properties?.["label"] ?? ""),
+                investigation.isDemo
+                  ? "Illustrative demo value"
+                  : "Retrieved source / calculated proxy",
+              ),
+            )
             .addTo(m);
         });
         m.on("mouseenter", id, () => (m.getCanvas().style.cursor = "pointer"));
@@ -144,13 +260,21 @@ export function InvestigationMap({ investigation, activeLayers, showCandidates =
         const node = document.createElement("button");
         node.type = "button";
         node.setAttribute("aria-label", `Candidate ${c.rank}: ${c.name}`);
-        node.className = "grid size-8 place-items-center rounded-full border-2 border-paper bg-signal font-mono text-xs font-semibold text-signal-foreground shadow-md transition-transform";
+        node.className =
+          "grid size-8 place-items-center rounded-full border-2 border-paper bg-signal font-mono text-xs font-semibold text-signal-foreground shadow-md transition-transform";
         node.textContent = String(c.rank);
-        node.onclick = (ev) => { ev.stopPropagation(); cb.current.onSelect?.(c.id); };
+        node.onclick = (ev) => {
+          ev.stopPropagation();
+          cb.current.onSelect?.(c.id);
+        };
         node.onmouseenter = () => cb.current.onHover?.(c.id);
         node.onmouseleave = () => cb.current.onHover?.(null);
         const popup = new ml.Popup({ offset: 18, closeButton: false }).setDOMContent(
-          popupContent(`Opportunity area ${c.rank}`, c.name, `Score ${totalScore(c)} (${investigation.isDemo ? "illustrative" : "calculated screening proxy"})`),
+          popupContent(
+            `Opportunity area ${c.rank}`,
+            c.name,
+            `Score ${totalScore(c)} (${investigation.isDemo ? "illustrative" : "calculated screening proxy"})`,
+          ),
         );
         const mk = new ml.Marker({ element: node }).setLngLat(c.coords).setPopup(popup).addTo(m);
         markers.current.set(c.id, { m: mk, el: node });
@@ -165,7 +289,8 @@ export function InvestigationMap({ investigation, activeLayers, showCandidates =
     if (!m || status !== "ready") return;
     investigation.layers.forEach((l) => {
       const id = `layer-${l.id}`;
-      if (m.getLayer(id)) m.setLayoutProperty(id, "visibility", activeLayers.includes(l.id) ? "visible" : "none");
+      if (m.getLayer(id))
+        m.setLayoutProperty(id, "visibility", activeLayers.includes(l.id) ? "visible" : "none");
     });
   }, [activeLayers, investigation, status]);
 
@@ -203,7 +328,9 @@ export function InvestigationMap({ investigation, activeLayers, showCandidates =
           <div>
             <AlertTriangle className="mx-auto mb-2 size-5 text-signal" />
             <div className="text-sm">The basemap could not load.</div>
-            <div className="label-tech mt-1 text-muted-foreground">Check your connection — results remain available in the panel.</div>
+            <div className="label-tech mt-1 text-muted-foreground">
+              Check your connection — results remain available in the panel.
+            </div>
           </div>
         </div>
       )}
@@ -211,23 +338,38 @@ export function InvestigationMap({ investigation, activeLayers, showCandidates =
         <>
           <button
             type="button"
-            onClick={() => map.current?.fitBounds(investigation.area.bounds, { padding: 40, duration: 900 })}
+            onClick={() =>
+              map.current?.fitBounds(investigation.area.bounds, { padding: 40, duration: 900 })
+            }
             className="label-tech absolute left-3 top-3 flex items-center gap-2 border border-border bg-paper px-2.5 py-1.5 hover:bg-muted"
           >
             <Maximize2 className="size-3" /> Fit area
           </button>
           <div className="absolute bottom-8 right-3 border border-border bg-paper/95 p-3">
-            <div className="label-tech mb-2 text-muted-foreground">Legend · {investigation.isDemo ? "demo" : "real data / proxies"}</div>
+            <div className="label-tech mb-2 text-muted-foreground">
+              Legend · {investigation.isDemo ? "demo" : "real data / proxies"}
+            </div>
             <ul className="space-y-1.5 text-xs">
-              <li className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-foreground" /> Existing supply</li>
-              <li className="flex items-center gap-2"><span className="size-2.5 rounded-full border border-primary bg-primary/20" /> Demand signal</li>
-              <li className="flex items-center gap-2"><span className="size-2.5 rounded-full border border-signal bg-signal/20" /> Coverage gap</li>
-              <li className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-signal" /> Candidate</li>
+              <li className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-foreground" /> Existing supply
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full border border-primary bg-primary/20" />{" "}
+                Demand signal
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full border border-signal bg-signal/20" />{" "}
+                Coverage gap
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-signal" /> Candidate
+              </li>
             </ul>
           </div>
           {coord && (
             <div className="label-tech pointer-events-none absolute right-14 top-3 bg-paper/90 px-2 py-1 text-muted-foreground">
-              {coord[1].toFixed(4)}° {coord[1] >= 0 ? "N" : "S"} / {Math.abs(coord[0]).toFixed(4)}° {coord[0] >= 0 ? "E" : "W"}
+              {coord[1].toFixed(4)}° {coord[1] >= 0 ? "N" : "S"} / {Math.abs(coord[0]).toFixed(4)}°{" "}
+              {coord[0] >= 0 ? "E" : "W"}
             </div>
           )}
         </>

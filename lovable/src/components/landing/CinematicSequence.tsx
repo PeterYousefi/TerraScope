@@ -28,7 +28,12 @@ const REVEALS = [
 
 const CAPS = [
   { at: [0.86, 0.905], k: "01", t: "Observe", d: "Gather geographic signals from public data." },
-  { at: [0.905, 0.945], k: "02", t: "Investigate", d: "Coordinate specialized AI reasoning steps." },
+  {
+    at: [0.905, 0.945],
+    k: "02",
+    t: "Investigate",
+    d: "Coordinate specialized AI reasoning steps.",
+  },
   { at: [0.945, 1.01], k: "03", t: "Verify", d: "Trace conclusions back to evidence and sources." },
 ];
 
@@ -141,15 +146,19 @@ export function CinematicSequence() {
             <CinematicCanvas />
           </Suspense>
         )}
-        {webgl === false && (
-          <div className="grid-paper absolute inset-0 opacity-10" aria-hidden />
-        )}
+        {webgl === false && <div className="grid-paper absolute inset-0 opacity-10" aria-hidden />}
       </div>
 
       {/* 3D-anchored labels, positioned by LabelProjector */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         {CITY_LABELS.map((l) => (
-          <div key={l.id} ref={(el) => { sceneState.labelEls[l.id] = el; }} className="absolute left-0 top-0 opacity-0 will-change-transform">
+          <div
+            key={l.id}
+            ref={(el) => {
+              sceneState.labelEls[l.id] = el;
+            }}
+            className="absolute left-0 top-0 opacity-0 will-change-transform"
+          >
             <div className="-mt-9 ml-2 whitespace-nowrap border-l border-signal pl-2">
               <div className="label-tech text-ink-foreground">{l.text}</div>
               {l.sub && <div className="label-tech text-ink-muted">{l.sub}</div>}
@@ -157,7 +166,12 @@ export function CinematicSequence() {
           </div>
         ))}
       </div>
-      <div ref={(el) => { sceneState.tooltipEl = el; }} className="pointer-events-none fixed left-0 top-0 z-50 border border-ink-border bg-ink/90 px-3 py-2 opacity-0 transition-opacity">
+      <div
+        ref={(el) => {
+          sceneState.tooltipEl = el;
+        }}
+        className="pointer-events-none fixed left-0 top-0 z-50 border border-ink-border bg-ink/90 px-3 py-2 opacity-0 transition-opacity"
+      >
         <div data-sub className="label-tech text-signal" />
         <div data-name className="text-sm font-medium" />
       </div>
@@ -174,28 +188,41 @@ export function CinematicSequence() {
             </div>
             <h1 className="display-xl">Every place has a story hidden in its data.</h1>
             <p className="mt-8 max-w-lg text-base leading-relaxed text-ink-muted md:text-lg">
-              SiteSignal turns geographic questions into evidence-backed investigations. Explore infrastructure, demand,
-              accessibility, and opportunity through an AI-powered spatial intelligence system.
+              SiteSignal turns geographic questions into evidence-backed investigations. Explore
+              infrastructure, demand, accessibility, and opportunity through an AI-powered spatial
+              intelligence system.
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
               <Button asChild variant="signal" size="lg">
-                <Link to="/investigate">Start an investigation <ArrowRight /></Link>
+                <Link to="/investigate">
+                  Start an investigation <ArrowRight />
+                </Link>
               </Button>
               <Button
                 variant="ghostInk"
                 size="lg"
-                onClick={() => window.scrollBy({ top: window.innerHeight * 2.4, behavior: reduced ? "auto" : "smooth" })}
+                onClick={() =>
+                  window.scrollBy({
+                    top: window.innerHeight * 2.4,
+                    behavior: reduced ? "auto" : "smooth",
+                  })
+                }
               >
                 Explore the experience
               </Button>
             </div>
             {webgl === false && (
-              <p className="label-tech mt-6 text-ink-muted">3D is unavailable on this device — the full app still works.</p>
+              <p className="label-tech mt-6 text-ink-muted">
+                3D is unavailable on this device — the full app still works.
+              </p>
             )}
           </div>
         </div>
       </div>
-      <div ref={reg("hint")} className="pointer-events-none absolute bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 text-ink-muted">
+      <div
+        ref={reg("hint")}
+        className="pointer-events-none absolute bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 text-ink-muted"
+      >
         <span className="label-tech">Scroll to descend</span>
         <ArrowDown className="size-4 animate-bounce" />
       </div>
@@ -206,11 +233,18 @@ export function CinematicSequence() {
       {/* SCENE 2 */}
       <div ref={reg("s2")} className="pointer-events-none absolute inset-x-0 bottom-0 opacity-0">
         <div className="mx-auto max-w-[1400px] px-6 pb-16 md:px-10">
-          <h2 className="display-lg max-w-3xl">From the entire planet to the question that matters.</h2>
-          <p className="mt-5 max-w-md text-ink-muted">Start broad. Find the signals. Follow the evidence down to the street.</p>
+          <h2 className="display-lg max-w-3xl">
+            From the entire planet to the question that matters.
+          </h2>
+          <p className="mt-5 max-w-md text-ink-muted">
+            Start broad. Find the signals. Follow the evidence down to the street.
+          </p>
         </div>
       </div>
-      <div ref={reg("reticle")} className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0">
+      <div
+        ref={reg("reticle")}
+        className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0"
+      >
         <div className="relative size-40 md:size-56">
           <span className="absolute left-0 top-0 h-5 w-5 border-l border-t border-signal" />
           <span className="absolute right-0 top-0 h-5 w-5 border-r border-t border-signal" />
@@ -227,7 +261,10 @@ export function CinematicSequence() {
       </div>
 
       {/* SCENE 3 */}
-      <div ref={reg("s3")} className="pointer-events-none absolute left-6 top-24 opacity-0 md:left-10">
+      <div
+        ref={reg("s3")}
+        className="pointer-events-none absolute left-6 top-24 opacity-0 md:left-10"
+      >
         <div className="label-tech mb-4 text-signal">Austin · infrastructure reveal</div>
         <ol className="space-y-2">
           {REVEALS.map((r, i) => (
@@ -246,7 +283,11 @@ export function CinematicSequence() {
           <h2 className="display-lg">A map shows you where. Intelligence helps explain why.</h2>
           <div className="grid gap-5 self-end">
             {CAPS.map((c, i) => (
-              <div key={c.t} ref={reg(`c${i}`)} className="flex gap-4 border-t border-ink-border pt-4">
+              <div
+                key={c.t}
+                ref={reg(`c${i}`)}
+                className="flex gap-4 border-t border-ink-border pt-4"
+              >
                 <span className="label-tech text-signal">{c.k}</span>
                 <div>
                   <div className="text-lg font-medium">{c.t}</div>

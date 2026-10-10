@@ -9,9 +9,17 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "SiteSignal AI — Ask a question. Investigate a place." },
-      { name: "description", content: "A cinematic 3D geospatial investigation platform that turns location questions into evidence-backed findings." },
+      {
+        name: "description",
+        content:
+          "A cinematic 3D geospatial investigation platform that turns location questions into evidence-backed findings.",
+      },
       { property: "og:title", content: "SiteSignal AI — Ask a question. Investigate a place." },
-      { property: "og:description", content: "From planetary scale to the street: explore infrastructure, demand and opportunity with transparent evidence." },
+      {
+        property: "og:description",
+        content:
+          "From planetary scale to the street: explore infrastructure, demand and opportunity with transparent evidence.",
+      },
     ],
   }),
   component: Landing,
@@ -40,10 +48,18 @@ function Landing() {
         <div className="mx-auto max-w-[1400px] px-6 py-28 md:px-10 md:py-40">
           <div className="label-tech mb-6 text-muted-foreground">06 · Begin</div>
           <h2 className="display-xl max-w-4xl">Stop guessing where. Start understanding why.</h2>
-          <p className="mt-8 max-w-md text-lg text-muted-foreground">Investigate any place through the signals that shape it.</p>
+          <p className="mt-8 max-w-md text-lg text-muted-foreground">
+            Investigate any place through the signals that shape it.
+          </p>
           <div className="mt-10 flex flex-wrap gap-3">
-            <Button asChild variant="default" size="lg"><Link to="/investigate">Open SiteSignal <ArrowRight /></Link></Button>
-            <Button asChild variant="outline" size="lg"><Link to="/methodology">See how it works</Link></Button>
+            <Button asChild variant="default" size="lg">
+              <Link to="/investigate">
+                Open SiteSignal <ArrowRight />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <Link to="/methodology">See how it works</Link>
+            </Button>
           </div>
         </div>
       </section>

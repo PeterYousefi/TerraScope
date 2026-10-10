@@ -67,7 +67,10 @@ export interface CandidateLocation {
   evidenceIds: string[];
   geometry?: { type: "Polygon" | "MultiPolygon"; coordinates: number[][][] | number[][][][] };
   totalScore?: number;
-  features?: Record<string, { value: number | null; unit: string; source: string; method: string; warning?: string | null }>;
+  features?: Record<
+    string,
+    { value: number | null; unit: string; source: string; method: string; warning?: string | null }
+  >;
   sourceRecordIds?: Record<string, string[]>;
 }
 
@@ -87,7 +90,10 @@ export interface InvestigationReport {
   aiGenerated?: boolean;
   aiStatus?: string;
   aiExplanation?: string[];
-  sensitivity?: Record<string, { weightMultiplier: number; topCandidate: string; topChanged: boolean }>;
+  sensitivity?: Record<
+    string,
+    { weightMultiplier: number; topCandidate: string; topChanged: boolean }
+  >;
   weights?: Record<string, number>;
 }
 
@@ -96,7 +102,14 @@ export interface Investigation {
   title: string;
   question: InvestigationQuestion;
   area: GeographicArea;
-  status: "complete" | "running" | "draft" | "queued" | "completed" | "completed_with_warnings" | "failed";
+  status:
+    | "complete"
+    | "running"
+    | "draft"
+    | "queued"
+    | "completed"
+    | "completed_with_warnings"
+    | "failed";
   createdAt: string;
   steps: AgentExecutionStep[];
   candidates: CandidateLocation[];

@@ -35,7 +35,11 @@ export const PHASE = {
 export function latLonToVec3(lat: number, lon: number, r = 1): [number, number, number] {
   const phi = ((90 - lat) * Math.PI) / 180;
   const theta = ((lon + 180) * Math.PI) / 180;
-  return [-r * Math.sin(phi) * Math.cos(theta), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta)];
+  return [
+    -r * Math.sin(phi) * Math.cos(theta),
+    r * Math.cos(phi),
+    r * Math.sin(phi) * Math.sin(theta),
+  ];
 }
 
 /** Austin city plane projection (shared by the 3D city and its labels) */

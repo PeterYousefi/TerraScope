@@ -12,12 +12,42 @@ const HOTSPOTS = [
 
 // Ambient city signals (real coordinates, decorative only)
 const CITIES: [number, number][] = [
-  [40.71, -74.0], [34.05, -118.24], [51.5, -0.12], [48.85, 2.35], [35.68, 139.69], [19.43, -99.13],
-  [-23.55, -46.63], [55.75, 37.62], [28.61, 77.2], [1.35, 103.82], [-33.87, 151.21], [6.52, 3.38],
-  [30.04, 31.24], [39.9, 116.4], [37.57, 126.98], [25.2, 55.27], [43.65, -79.38], [49.28, -123.12],
-  [29.76, -95.37], [33.75, -84.39], [25.76, -80.19], [39.74, -104.99], [45.5, -73.57], [-34.6, -58.38],
-  [52.52, 13.4], [41.9, 12.5], [59.33, 18.07], [-1.29, 36.82], [13.75, 100.5], [22.32, 114.17],
-  [37.77, -122.42], [47.6, -122.3], [32.78, -96.8], [36.17, -115.14], [44.98, -93.27], [42.36, -71.06],
+  [40.71, -74.0],
+  [34.05, -118.24],
+  [51.5, -0.12],
+  [48.85, 2.35],
+  [35.68, 139.69],
+  [19.43, -99.13],
+  [-23.55, -46.63],
+  [55.75, 37.62],
+  [28.61, 77.2],
+  [1.35, 103.82],
+  [-33.87, 151.21],
+  [6.52, 3.38],
+  [30.04, 31.24],
+  [39.9, 116.4],
+  [37.57, 126.98],
+  [25.2, 55.27],
+  [43.65, -79.38],
+  [49.28, -123.12],
+  [29.76, -95.37],
+  [33.75, -84.39],
+  [25.76, -80.19],
+  [39.74, -104.99],
+  [45.5, -73.57],
+  [-34.6, -58.38],
+  [52.52, 13.4],
+  [41.9, 12.5],
+  [59.33, 18.07],
+  [-1.29, 36.82],
+  [13.75, 100.5],
+  [22.32, 114.17],
+  [37.77, -122.42],
+  [47.6, -122.3],
+  [32.78, -96.8],
+  [36.17, -115.14],
+  [44.98, -93.27],
+  [42.36, -71.06],
 ];
 
 const atmosphereVert = `varying vec3 vN; varying vec3 vP;
@@ -45,7 +75,10 @@ export function Globe() {
   const navigate = useNavigate();
   const target = useMemo(targetRotation, []);
 
-  const [map, spec] = useLoader(THREE.TextureLoader, ["/textures/earth_atmos_2048.jpg", "/textures/earth_specular_2048.jpg"]) as [THREE.Texture, THREE.Texture];
+  const [map, spec] = useLoader(THREE.TextureLoader, [
+    "/textures/earth_atmos_2048.jpg",
+    "/textures/earth_specular_2048.jpg",
+  ]) as [THREE.Texture, THREE.Texture];
   map.colorSpace = THREE.SRGBColorSpace;
   map.anisotropy = 4;
 
@@ -67,7 +100,13 @@ export function Globe() {
 
   const cityPoints = useMemo(() => {
     const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(CITIES.flatMap(([a, b]) => latLonToVec3(a, b, 1.006)), 3));
+    g.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(
+        CITIES.flatMap(([a, b]) => latLonToVec3(a, b, 1.006)),
+        3,
+      ),
+    );
     return g;
   }, []);
 
@@ -94,7 +133,6 @@ export function Globe() {
     const shiftX = THREE.MathUtils.lerp(0.55, 0, ease(seg(p, 0.02, PHASE.descentStart + 0.08)));
     cam.position.set(px - shiftX, py + 0.05 * (1 - t), dist);
     cam.lookAt(-shiftX * 0.95, 0, 0);
-
 
     if (earthMat.current) earthMat.current.emissiveIntensity = 0.08 + t * 0.25;
     if (atmo.current) atmo.current.uniforms["uI"]!.value = 0.9 + t * 0.8;
@@ -130,11 +168,22 @@ export function Globe() {
             <group key={h.id} position={pos}>
               <mesh
                 onPointerOver={(e) => {
-                  e.stopPropagation(); setHover(h.id); document.body.style.cursor = "pointer";
+                  e.stopPropagation();
+                  setHover(h.id);
+                  document.body.style.cursor = "pointer";
                   const t = sceneState.tooltipEl;
-                  if (t) { t.dataset["sub"] = h.sub; t.querySelector("[data-name]")!.textContent = `${h.name} — open demo`; t.querySelector("[data-sub]")!.textContent = h.sub; t.style.opacity = "1"; }
+                  if (t) {
+                    t.dataset["sub"] = h.sub;
+                    t.querySelector("[data-name]")!.textContent = `${h.name} — open demo`;
+                    t.querySelector("[data-sub]")!.textContent = h.sub;
+                    t.style.opacity = "1";
+                  }
                 }}
-                onPointerOut={() => { setHover(null); document.body.style.cursor = ""; if (sceneState.tooltipEl) sceneState.tooltipEl.style.opacity = "0"; }}
+                onPointerOut={() => {
+                  setHover(null);
+                  document.body.style.cursor = "";
+                  if (sceneState.tooltipEl) sceneState.tooltipEl.style.opacity = "0";
+                }}
                 onClick={() => navigate({ to: "/investigations/$id", params: { id: h.id } })}
               >
                 <sphereGeometry args={[active ? 0.026 : 0.017, 16, 16]} />
@@ -142,7 +191,12 @@ export function Globe() {
               </mesh>
               <mesh>
                 <sphereGeometry args={[0.045, 16, 16]} />
-                <meshBasicMaterial color="#e6a23c" transparent opacity={active ? 0.25 : 0.0} depthWrite={false} />
+                <meshBasicMaterial
+                  color="#e6a23c"
+                  transparent
+                  opacity={active ? 0.25 : 0.0}
+                  depthWrite={false}
+                />
               </mesh>
             </group>
           );

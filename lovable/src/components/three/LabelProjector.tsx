@@ -14,7 +14,10 @@ export function LabelProjector() {
       const el = sceneState.labelEls[l.id];
       if (!el) continue;
       const o = inCity ? l.vis(p) : 0;
-      if (o <= 0.001) { el.style.opacity = "0"; continue; }
+      if (o <= 0.001) {
+        el.style.opacity = "0";
+        continue;
+      }
       v.set(...l.pos).project(camera);
       const behind = v.z > 1;
       const x = (v.x * 0.5 + 0.5) * size.width;
