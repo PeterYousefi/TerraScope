@@ -11,7 +11,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .ai import supported
 from .config import Settings
-from .models import Candidate, Event, Evidence, Investigation, Layer, Question, Report, Request
+from .models import (
+    Candidate,
+    Capabilities,
+    Event,
+    Evidence,
+    Health,
+    Investigation,
+    Layer,
+    Question,
+    Report,
+    Request,
+)
 from .pipeline import run
 from .providers import Providers, now
 from .store import Store
@@ -31,20 +42,34 @@ def create_app(settings=None, provider_factory=Providers):
         for inv in store.list():
             if inv.status == "running":
                 inv.status = "failed"
-                inv.report.summary = "Interrupted by server restart. Submit again; provider cache is retained."
-                inv.steps.append(Event(id=str(uuid4()), agent="worker", label="Interrupted execution",
-                                       detail=inv.report.summary, timestamp=now(), status="failed"))
+                inv.report.summary = (
+                    "Interrupted by server restart. Submit again; provider cache is retained."
+                )
+                inv.steps.append(
+                    Event(
+                        id=str(uuid4()),
+                        agent="worker",
+                        label="Interrupted execution",
+                        detail=inv.report.summary,
+                        timestamp=now(),
+                        status="failed",
+                    )
+                )
                 store.save(inv)
-        async with httpx.AsyncClient(headers={"User-Agent": "SiteSignal-local-research/0.1"},
-                                     limits=httpx.Limits(max_connections=3)) as client:
+        async with httpx.AsyncClient(
+            headers={"User-Agent": "SiteSignal-local-research/0.1"},
+            limits=httpx.Limits(max_connections=3),
+        ) as client:
             providers = provider_factory(settings, store, client)
+
             async def worker():
                 while True:
                     queued = [i for i in reversed(store.list()) if i.status == "queued"]
                     if queued:
                         await run(queued[0], settings, store, providers)
                     else:
-                        await asyncio.sleep(.3)
+                        await asyncio.sleep(0.3)
+
             task = asyncio.create_task(worker())
             yield
             task.cancel()
@@ -53,43 +78,74 @@ def create_app(settings=None, provider_factory=Providers):
 
     app = FastAPI(title="SiteSignal AI local API", version="0.1.0", lifespan=lifespan)
     app.state.store = store
-    app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins.split(","),
-                       allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins.split(","),
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
+    )
 
     @app.middleware("http")
     async def local_only_write(request: HTTPRequest, call_next):
         # Browser cross-origin writes require a trusted frontend Origin, even though this is local.
-        if request.method == "POST" and request.headers.get("origin") and request.headers["origin"] not in settings.cors_origins.split(","):
+        if (
+            request.method == "POST"
+            and request.headers.get("origin")
+            and request.headers["origin"] not in settings.cors_origins.split(",")
+        ):
             from fastapi.responses import JSONResponse
+
             return JSONResponse({"detail": "Origin not allowed"}, status_code=403)
         return await call_next(request)
 
-    @app.get("/api/health")
+    @app.get("/api/health", response_model=Health)
     def health():
         return {"status": "ok", "dataMode": "live", "database": "sqlite"}
 
-    @app.get("/api/capabilities")
+    @app.get("/api/capabilities", response_model=Capabilities)
     def capabilities():
-        return {"supported": ["Austin, Texas: EV charging opportunity areas"],
-                "aiAvailable": settings.ai_available, "nlrConfigured": bool(settings.nlr_api_key),
-                "missingConfiguration": [k for k, value in [("NLR_API_KEY", settings.nlr_api_key), ("CENSUS_API_KEY", settings.census_api_key)] if not value],
-                "routing": "Unavailable; straight-line distances only", "acsYear": settings.acs_year}
+        return {
+            "supported": ["Austin, Texas: EV charging opportunity areas"],
+            "aiAvailable": settings.ai_available,
+            "nlrConfigured": bool(settings.nlr_api_key),
+            "missingConfiguration": [
+                k
+                for k, value in [
+                    ("NLR_API_KEY", settings.nlr_api_key),
+                    ("CENSUS_API_KEY", settings.census_api_key),
+                ]
+                if not value
+            ],
+            "routing": "Unavailable; straight-line distances only",
+            "acsYear": settings.acs_year,
+        }
 
     @app.post("/api/investigations", response_model=Investigation, status_code=202)
     def create(body: Request):
         if not supported(body.question, body.area):
-            raise HTTPException(422, "Only Austin, Texas EV charging opportunity analysis is supported")
+            raise HTTPException(
+                422, "Only Austin, Texas EV charging opportunity analysis is supported"
+            )
         active = [i for i in store.list() if i.status in ("queued", "running")]
-        duplicate = next((i for i in active if i.question.text.strip().lower() == body.question.strip().lower()), None)
+        duplicate = next(
+            (i for i in active if i.question.text.strip().lower() == body.question.strip().lower()),
+            None,
+        )
         if duplicate:
             return duplicate
         if len(active) >= settings.max_queue:
-            raise HTTPException(429, "Local investigation queue is full; wait for an active job to finish")
+            raise HTTPException(
+                429, "Local investigation queue is full; wait for an active job to finish"
+            )
         cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
-        if sum(datetime.fromisoformat(i.createdAt) > cutoff for i in store.list()) >= settings.max_jobs_per_hour:
+        if (
+            sum(datetime.fromisoformat(i.createdAt) > cutoff for i in store.list())
+            >= settings.max_jobs_per_hour
+        ):
             raise HTTPException(429, "Local hourly investigation limit reached; try again later")
-        inv = Investigation(id=str(uuid4()), question=Question(text=body.question),
-                            status="queued", createdAt=now())
+        inv = Investigation(
+            id=str(uuid4()), question=Question(text=body.question), status="queued", createdAt=now()
+        )
         store.save(inv)
         return inv
 

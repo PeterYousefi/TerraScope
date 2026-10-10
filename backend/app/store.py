@@ -3,6 +3,7 @@ from pathlib import Path
 
 from sqlalchemy import JSON, Float, String, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from sqlalchemy.pool import StaticPool
 
 from .models import Investigation
 
@@ -26,9 +27,13 @@ class Cache(Base):
 
 class Store:
     def __init__(self, url):
-        if url.startswith("sqlite:///" ) and url != "sqlite:///:memory:":
+        if url.startswith("sqlite:///") and url != "sqlite:///:memory:":
             Path(url.removeprefix("sqlite:///")).parent.mkdir(parents=True, exist_ok=True)
-        self.engine = create_engine(url, connect_args={"check_same_thread": False})
+        self.engine = create_engine(
+            url,
+            connect_args={"check_same_thread": False},
+            **({"poolclass": StaticPool} if url == "sqlite:///:memory:" else {}),
+        )
         Base.metadata.create_all(self.engine)
 
     def save(self, inv: Investigation):
@@ -43,8 +48,11 @@ class Store:
 
     def list(self):
         with Session(self.engine) as s:
-            return sorted([Investigation.model_validate(r.payload) for r in s.scalars(select(Job))],
-                          key=lambda x: x.createdAt, reverse=True)
+            return sorted(
+                [Investigation.model_validate(r.payload) for r in s.scalars(select(Job))],
+                key=lambda x: x.createdAt,
+                reverse=True,
+            )
 
     def cached(self, key):
         with Session(self.engine) as s:

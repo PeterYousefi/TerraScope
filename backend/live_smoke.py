@@ -1,4 +1,5 @@
 """Opt-in public-data smoke; no paid AI calls or fixture fallback."""
+
 import argparse
 import asyncio
 import json
@@ -23,16 +24,31 @@ async def smoke(output):
                 records, sources = await getattr(p, name)()
                 artifacts[name] = records
                 sources = sources if isinstance(sources, list) else [sources]
-                results["providers"][name] = {"status": "ok", "sources": [s.model_dump() for s in sources]}
+                results["providers"][name] = {
+                    "status": "ok",
+                    "sources": [s.model_dump() for s in sources],
+                }
             except ProviderError as exc:
                 results["providers"][name] = {"status": "unavailable", "detail": str(exc)}
         if all(k in artifacts for k in ("boundary", "stations", "census")):
-            candidates, _, sensitivity, warnings = analyze(artifacts["boundary"], artifacts["stations"],
-                                                           artifacts["census"], artifacts.get("osm"), settings)
-            results["analysis"] = {"candidates": len(candidates), "top": candidates[0].model_dump(),
-                                   "sensitivity": sensitivity, "warnings": warnings}
+            candidates, _, sensitivity, warnings = analyze(
+                artifacts["boundary"],
+                artifacts["stations"],
+                artifacts["census"],
+                artifacts.get("osm"),
+                settings,
+            )
+            results["analysis"] = {
+                "candidates": len(candidates),
+                "top": candidates[0].model_dump(),
+                "sensitivity": sensitivity,
+                "warnings": warnings,
+            }
         else:
-            results["analysis"] = {"status": "blocked", "detail": "NLR, Census and official boundary must succeed before ranking."}
+            results["analysis"] = {
+                "status": "blocked",
+                "detail": "NLR, Census and official boundary must succeed before ranking.",
+            }
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text(json.dumps(results, indent=2))
     print(json.dumps(results, indent=2))

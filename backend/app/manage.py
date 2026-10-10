@@ -1,4 +1,5 @@
 """Explicit local database administration; no cloud actions."""
+
 import argparse
 
 from .config import Settings

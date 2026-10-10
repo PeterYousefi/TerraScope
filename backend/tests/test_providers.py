@@ -10,13 +10,23 @@ from app.store import Store
 
 @pytest.fixture
 def provider(tmp_path):
-    return Providers(Settings(nlr_api_key="test-secret", census_api_key="census-test", request_timeout=5),
-                     Store(f"sqlite:///{tmp_path}/test.db"), httpx.AsyncClient())
+    return Providers(
+        Settings(nlr_api_key="test-secret", census_api_key="census-test", request_timeout=5),
+        Store(f"sqlite:///{tmp_path}/test.db"),
+        httpx.AsyncClient(),
+    )
 
 
 def station(id=1, **kwargs):
-    return dict(id=id, station_name="Fixture station", longitude=-97.74, latitude=30.27,
-                access_code="public", status_code="E", **kwargs)
+    return dict(
+        id=id,
+        station_name="Fixture station",
+        longitude=-97.74,
+        latitude=30.27,
+        access_code="public",
+        status_code="E",
+        **kwargs,
+    )
 
 
 def test_station_normalization():
@@ -30,8 +40,9 @@ def test_station_normalization():
         normalize_stations({"stations": []})
 
 
-@pytest.mark.parametrize("value,expected", [("100", 100), (None, None), ("null", None),
-                                           ("-666666666", None), ("0", 0)])
+@pytest.mark.parametrize(
+    "value,expected", [("100", 100), (None, None), ("null", None), ("-666666666", None), ("0", 0)]
+)
 def test_census_missing(value, expected):
     assert census_number(value) == expected
 
@@ -66,11 +77,33 @@ async def test_timeout(provider):
 @respx.mock
 async def test_census_geometry_join(provider):
     url = "https://api.census.gov/data/2024/acs/acs5"
-    respx.get(url).respond(200, json=[
-        ["NAME", "B01003_001E", "B11001_001E", "B19013_001E", "B08301_001E", "state", "county", "tract"],
-        ["Fixture tract", "1000", "400", "-666666666", "600", "48", "453", "000100"]])
-    respx.get(url__regex=r".*Tracts_Blocks.*").respond(200, json={"features": [
-        {"properties": {"GEOID": "48453000100"}, "geometry": mapping(box(-97.8, 30.2, -97.7, 30.3))}]})
+    respx.get(url).respond(
+        200,
+        json=[
+            [
+                "NAME",
+                "B01003_001E",
+                "B11001_001E",
+                "B19013_001E",
+                "B08301_001E",
+                "state",
+                "county",
+                "tract",
+            ],
+            ["Fixture tract", "1000", "400", "-666666666", "600", "48", "453", "000100"],
+        ],
+    )
+    respx.get(url__regex=r".*Tracts_Blocks.*").respond(
+        200,
+        json={
+            "features": [
+                {
+                    "properties": {"GEOID": "48453000100"},
+                    "geometry": mapping(box(-97.8, 30.2, -97.7, 30.3)),
+                }
+            ]
+        },
+    )
     rows, sources = await provider.census()
     assert rows[0]["medianIncome"] is None and rows[0]["population"] == 1000
     assert len(sources) == 2
@@ -79,8 +112,15 @@ async def test_census_geometry_join(provider):
 @respx.mock
 async def test_osm_missing_tags_and_partial(provider):
     route = respx.post(provider.settings.overpass_url)
-    route.respond(200, json={"elements": [{"type": "node", "id": 1, "lon": -97.74, "lat": 30.27},
-                                        {"type": "way", "id": 2}]})
+    route.respond(
+        200,
+        json={
+            "elements": [
+                {"type": "node", "id": 1, "lon": -97.74, "lat": 30.27},
+                {"type": "way", "id": 2},
+            ]
+        },
+    )
     rows, source = await provider.osm()
     assert len(rows) == 1 and source.warnings
     provider.store.clear_cache()
@@ -98,8 +138,11 @@ async def test_missing_key(provider):
 @respx.mock
 async def test_boundary_topology_repaired(provider):
     from shapely.geometry import Polygon, shape
+
     polygon = Polygon([(-97.8, 30.2), (-97.7, 30.3), (-97.8, 30.3), (-97.7, 30.2), (-97.8, 30.2)])
-    respx.get(url__regex=r".*Places_CouSub.*").respond(200, json={"features": [{"geometry": mapping(polygon)}]})
+    respx.get(url__regex=r".*Places_CouSub.*").respond(
+        200, json={"features": [{"geometry": mapping(polygon)}]}
+    )
     geometry, source = await provider.boundary()
     assert shape(geometry).is_valid and source.warnings
 
@@ -124,12 +167,26 @@ def test_expired_cache(provider):
 
 @respx.mock
 async def test_osm_way_geometry_bounds(provider):
-    respx.post(provider.settings.overpass_url).respond(200, json={"elements": [
-        {"type": "way", "id": 5, "bounds": {"minlon": -97.75, "maxlon": -97.73,
-                                                "minlat": 30.26, "maxlat": 30.28},
-         "tags": {"highway": "primary"}, "geometry": [
-             {"lon": -97.75, "lat": 30.26}, {"lon": -97.73, "lat": 30.28}]}]})
+    respx.post(provider.settings.overpass_url).respond(
+        200,
+        json={
+            "elements": [
+                {
+                    "type": "way",
+                    "id": 5,
+                    "bounds": {
+                        "minlon": -97.75,
+                        "maxlon": -97.73,
+                        "minlat": 30.26,
+                        "maxlat": 30.28,
+                    },
+                    "tags": {"highway": "primary"},
+                    "geometry": [{"lon": -97.75, "lat": 30.26}, {"lon": -97.73, "lat": 30.28}],
+                }
+            ]
+        },
+    )
     rows, source = await provider.osm()
     assert len(rows) == 1 and rows[0]["road"]
-    assert rows[0]["lon"] == pytest.approx(-97.74, abs=.001)
+    assert rows[0]["lon"] == pytest.approx(-97.74, abs=0.001)
     assert "not entrances" in str(source.warnings)

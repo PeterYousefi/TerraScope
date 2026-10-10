@@ -136,3 +136,18 @@ class Investigation(Model):
     dataMode: Literal["live", "cached", "mixed"] = "live"
     warnings: list[str] = []
     records: dict[str, Any] = {}
+
+
+class Health(Model):
+    status: Literal["ok"] = "ok"
+    dataMode: Literal["live"] = "live"
+    database: Literal["sqlite"] = "sqlite"
+
+
+class Capabilities(Model):
+    supported: list[str]
+    aiAvailable: bool
+    nlrConfigured: bool
+    missingConfiguration: list[str]
+    routing: str
+    acsYear: int
