@@ -3,6 +3,18 @@ import { test, expect } from "@playwright/test";
 test("preserved landing navigation and persisted Austin workflow with TEST fixtures", async ({
   page,
 }) => {
+  // Keep routine acceptance independent of public tile service uptime.
+  await page.route("https://basemaps.cartocdn.com/gl/positron-gl-style/style.json", (route) =>
+    route.fulfill({
+      json: {
+        version: 8,
+        sources: {},
+        layers: [
+          { id: "test-background", type: "background", paint: { "background-color": "#f7f7f7" } },
+        ],
+      },
+    }),
+  );
   await page.goto("/");
   await expect(page.getByRole("link", { name: "Investigate", exact: true }).first()).toBeVisible();
   await page.getByRole("link", { name: "Investigate", exact: true }).first().click();
@@ -19,13 +31,11 @@ test("preserved landing navigation and persisted Austin workflow with TEST fixtu
   await firstCandidate.click();
   await expect(page.getByText("population:", { exact: false }).first()).toBeVisible();
   await expect(page.getByText("estimated people", { exact: false }).first()).toBeVisible();
-  // Check visible map markers where the public basemap successfully loads.
-  if (await page.getByRole("button", { name: /^Candidate 1:/ }).count()) {
-    await page.getByRole("button", { name: /^Candidate 1:/ }).click();
-    await expect(
-      page.getByText("calculated screening proxy", { exact: false }).first(),
-    ).toBeVisible();
-  }
+  await expect(page.getByRole("button", { name: /^Candidate 1:/ })).toBeVisible();
+  await page.getByRole("button", { name: /^Candidate 1:/ }).click();
+  await expect(
+    page.getByText("calculated screening proxy", { exact: false }).first(),
+  ).toBeVisible();
   await page
     .getByRole("button", { name: /ZONE-.*estimated people/i })
     .first()

@@ -1,7 +1,8 @@
 import { defineConfig } from "@playwright/test";
 import { platform } from "node:os";
 
-const python = platform() === "win32" ? "../backend/.venv/Scripts/python.exe" : "../backend/.venv/bin/python";
+const python =
+  platform() === "win32" ? "../backend/.venv/Scripts/python.exe" : "../backend/.venv/bin/python";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -10,8 +11,7 @@ export default defineConfig({
   use: { baseURL: "http://127.0.0.1:5174", headless: true, screenshot: "only-on-failure" },
   webServer: [
     {
-      command:
-        `${python} -m uvicorn tests.browser_server:app --app-dir ../backend --host 127.0.0.1 --port 8001`,
+      command: `${python} -m uvicorn tests.browser_server:app --app-dir ../backend --host 127.0.0.1 --port 8001`,
       url: "http://127.0.0.1:8001/api/health",
       reuseExistingServer: false,
     },
