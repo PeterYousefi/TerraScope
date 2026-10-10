@@ -1,0 +1,11 @@
+# SiteSignal local architecture
+
+React/TanStack Start in `lovable/` calls a typed FastAPI API in `backend/`. Preserve Three/R3F and GSAP scenes. MapLibre presents source points and candidate polygons; tiles are independent of analysis.
+
+A single bounded local worker polls persisted queued jobs in SQLite through SQLAlchemy. State, execution events and full analysis artifacts survive reloads. Interrupted jobs fail truthfully on startup; this is a single-process local worker, not a production queue. Provider responses use SQLite TTL cache; keys are excluded from cache identifiers/provenance/logging. HTTPX requests have timeouts and conservative retries. Overpass is queried serially and cached.
+
+The Austin-only planner retrieves NLR public operating EV stations, ACS tract population/households/income/commute estimates, official Census TIGERweb tract and Austin place geometries, and OSM destinations/roads. Analysis projects geometries to EPSG:32614 (meters), clips a regular grid to the Austin boundary and aggregates tract population by intersection area (uniform-density assumption). Distances are straight-line meters. No routing time is inferred. Scores use documented configurable weights and cohort min/max normalization; flat dimensions contribute 50. Missing competition data prevents ranking, rather than treating unavailable stations as zero. Missing optional dimensions remain null and are removed from weights with warnings. Sensitivity compares rank under each weight increased 20%.
+
+Each result contains raw normalized source records, retrieval metadata, geographic features, score components, actual events and limitations. Deterministic statistical summaries remain available without AI. OpenAI is disabled unless explicitly enabled and configured; structured tool selection is validated against the supported pipeline. AI explanations can only select candidate/evidence IDs and precomputed observation IDs, preventing invented numeric claims from entering the displayed report. Paid calls are capped and never required for tests.
+
+Local endpoints: frontend 5173, backend 8000, OpenAPI `/docs`. No cloud resources, authentication or deployment scripts are part of this scope.
