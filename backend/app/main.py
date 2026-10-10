@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager, suppress
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import httpx
@@ -84,6 +85,9 @@ def create_app(settings=None, provider_factory=Providers):
             return duplicate
         if len(active) >= settings.max_queue:
             raise HTTPException(429, "Local investigation queue is full; wait for an active job to finish")
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+        if sum(datetime.fromisoformat(i.createdAt) > cutoff for i in store.list()) >= settings.max_jobs_per_hour:
+            raise HTTPException(429, "Local hourly investigation limit reached; try again later")
         inv = Investigation(id=str(uuid4()), question=Question(text=body.question),
                             status="queued", createdAt=now())
         store.save(inv)

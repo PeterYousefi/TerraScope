@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     max_candidates: int = Field(default=80, ge=5, le=200)
     grid_meters: int = Field(default=3000, ge=1500, le=10000)
     catchment_meters: int = Field(default=2000, ge=500, le=5000)
+    overpass_url: str = "https://overpass-api.de/api/interpreter"
+    max_jobs_per_hour: int = Field(default=10, ge=1, le=100)
     request_timeout: int = Field(default=60, ge=5, le=120)
     max_queue: int = Field(default=5, ge=1, le=20)
     weights: dict[str, float] = {"Demand proxy": .35, "Coverage gap": .30,

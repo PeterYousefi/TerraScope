@@ -1,9 +1,8 @@
 import pytest
 from shapely.geometry import Point, box, mapping, shape
-from shapely.ops import transform
 
 from app.config import Settings
-from app.spatial import PROJECT, UNPROJECT, analyze, generate_zones, normalize
+from app.spatial import PROJECT, UNPROJECT, analyze, generate_zones, normalize, transform
 
 
 @pytest.fixture

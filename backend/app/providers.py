@@ -8,8 +8,10 @@ from typing import Any
 
 import httpx
 from pydantic import BaseModel, Field, ValidationError
+from pyproj import Transformer
 from shapely import make_valid
-from shapely.geometry import shape
+from shapely import transform as project_geometry
+from shapely.geometry import box, shape
 
 from .models import Source
 
@@ -113,7 +115,7 @@ class Providers:
                                                   params=params, data=data,
                                                   timeout=self.settings.request_timeout)
                     if r.status_code in (429, 502, 503, 504) and attempt == 0:
-                        await asyncio.sleep(2)
+                        await asyncio.sleep(30 if r.status_code == 429 else 2)
                         continue
                     if not r.is_success:
                         raise ProviderError(f"Provider returned HTTP {r.status_code}", r.status_code)
@@ -243,11 +245,11 @@ class Providers:
     async def osm(self):
         west, south, east, north = BBOX
         bounds = f"({south},{west},{north},{east})"
-        query = f'''[out:json][timeout:45][maxsize:33554432];(
+        query = f'''[out:json][timeout:45][maxsize:134217728];(
         nwr[amenity=parking]{bounds};nwr[shop=supermarket]{bounds};
         nwr[shop=mall]{bounds};
         way[highway~"^(motorway|trunk|primary|secondary)$"]{bounds};);out center geom;'''
-        url = "https://overpass-api.de/api/interpreter"
+        url = self.settings.overpass_url
         body, at, cached = await self.request(url, data={"data": query}, ttl=7*86400)
         elements = body.get("elements")
         if not isinstance(elements, list):
@@ -255,6 +257,10 @@ class Providers:
         if len(elements) > 20000:
             raise ProviderError("OSM bounded result limit exceeded")
         records, seen, warnings = [], set(), []
+        missing_coordinates = 0
+        projected_centers = 0
+        project = Transformer.from_crs(4326, 32614, always_xy=True).transform
+        unproject = Transformer.from_crs(32614, 4326, always_xy=True).transform
         for r in elements:
             if not isinstance(r, dict):
                 warnings.append("Discarded malformed OSM record")
@@ -262,10 +268,21 @@ class Providers:
             center = r.get("center", r)
             lon, lat = center.get("lon"), center.get("lat")
             id = f"{r.get('type')}/{r.get('id')}"
+            # Overpass geom output supplies bounds rather than center for ways/relations.
+            if (lon is None or lat is None) and isinstance(r.get("bounds"), dict):
+                bounds = r["bounds"]
+                try:
+                    g = box(bounds["minlon"], bounds["minlat"], bounds["maxlon"], bounds["maxlat"])
+                    projected = project_geometry(g, project, interleaved=False)
+                    p = projected.representative_point()
+                    lon, lat = unproject(p.x, p.y)
+                    projected_centers += 1
+                except (KeyError, TypeError, ValueError):
+                    pass
             if id in seen:
                 continue
             if not isinstance(lon, (int, float)) or not isinstance(lat, (int, float)):
-                warnings.append(f"OSM object {id} has no coordinates")
+                missing_coordinates += 1
                 continue
             if not BBOX[0] <= lon <= BBOX[2] or not BBOX[1] <= lat <= BBOX[3]:
                 continue
@@ -273,6 +290,10 @@ class Providers:
             tags = r.get("tags") or {}
             records.append({"id": id, "lon": lon, "lat": lat, "tags": tags,
                             "road": "highway" in tags, "geometry": r.get("geometry", [])})
+        if missing_coordinates:
+            warnings.append(f"{missing_coordinates} OSM objects discarded for missing coordinates/bounds")
+        if projected_centers:
+            warnings.append(f"{projected_centers} OSM way/relation centers derived from projected bounding boxes; not entrances")
         warnings.append("OSM is volunteered mapping; absent destinations do not prove absence.")
         return records, self.source("osm", "Parking, supermarkets, malls and major roads",
                                     "OpenStreetMap contributors", url, at, cached, len(records),

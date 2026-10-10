@@ -78,7 +78,7 @@ async def test_census_geometry_join(provider):
 
 @respx.mock
 async def test_osm_missing_tags_and_partial(provider):
-    route = respx.post("https://overpass-api.de/api/interpreter")
+    route = respx.post(provider.settings.overpass_url)
     route.respond(200, json={"elements": [{"type": "node", "id": 1, "lon": -97.74, "lat": 30.27},
                                         {"type": "way", "id": 2}]})
     rows, source = await provider.osm()
@@ -93,3 +93,43 @@ async def test_missing_key(provider):
     provider.settings.nlr_api_key = ""
     with pytest.raises(ProviderError, match="NLR_API_KEY"):
         await provider.stations()
+
+
+@respx.mock
+async def test_boundary_topology_repaired(provider):
+    from shapely.geometry import Polygon, shape
+    polygon = Polygon([(-97.8, 30.2), (-97.7, 30.3), (-97.8, 30.3), (-97.7, 30.2), (-97.8, 30.2)])
+    respx.get(url__regex=r".*Places_CouSub.*").respond(200, json={"features": [{"geometry": mapping(polygon)}]})
+    geometry, source = await provider.boundary()
+    assert shape(geometry).is_valid and source.warnings
+
+
+async def test_missing_census_key(provider):
+    provider.settings.census_api_key = ""
+    with pytest.raises(ProviderError, match="CENSUS_API_KEY"):
+        await provider.census()
+
+
+@respx.mock
+async def test_truncated_supply_rejected(provider):
+    respx.get(NLR_URL).respond(200, json={"fuel_stations": [station()], "total_results": 100})
+    with pytest.raises(ProviderError, match="incomplete"):
+        await provider.stations()
+
+
+def test_expired_cache(provider):
+    provider.store.cache("expired", {"body": {}, "at": "test"}, ttl=-1)
+    assert provider.store.cached("expired") is None
+
+
+@respx.mock
+async def test_osm_way_geometry_bounds(provider):
+    respx.post(provider.settings.overpass_url).respond(200, json={"elements": [
+        {"type": "way", "id": 5, "bounds": {"minlon": -97.75, "maxlon": -97.73,
+                                                "minlat": 30.26, "maxlat": 30.28},
+         "tags": {"highway": "primary"}, "geometry": [
+             {"lon": -97.75, "lat": 30.26}, {"lon": -97.73, "lat": 30.28}]}]})
+    rows, source = await provider.osm()
+    assert len(rows) == 1 and rows[0]["road"]
+    assert rows[0]["lon"] == pytest.approx(-97.74, abs=.001)
+    assert "not entrances" in str(source.warnings)

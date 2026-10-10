@@ -88,3 +88,12 @@ def test_missing_supply_never_fake_success(tmp_path):
         assert inv["status"] == "failed" and inv["candidates"] == []
         assert "census" in inv["records"]
         assert "NLR_API_KEY" in str(inv["warnings"])
+
+
+def test_persisted_hourly_limit(tmp_path):
+    settings = Settings(database_url=f"sqlite:///{tmp_path}/jobs.db", max_jobs_per_hour=1)
+    with TestClient(create_app(settings, FixtureProviders)) as client:
+        id = client.post("/api/investigations", json={"question": "EV charging in Austin?"}).json()["id"]
+        finish(client, id)
+        response = client.post("/api/investigations", json={"question": "Where to open electric charging in Austin?"})
+        assert response.status_code == 429
