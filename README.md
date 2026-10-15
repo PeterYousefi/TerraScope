@@ -108,7 +108,7 @@ Browser acceptance starts a real FastAPI instance with a temporary SQLite databa
 
 ## Verified scope and remaining work
 
-**Local checks on October 15, 2026:** 31 backend tests, 3 frontend tests, and 2 Chromium acceptance tests passed; Ruff, TypeScript checking, ESLint, and production build passed. ESLint reports seven warnings; the build reports large map/3D bundles. See [validation details](docs/VALIDATION.md).
+**Local checks on October 15, 2026:** 34 backend tests, 4 frontend tests, and 2 Chromium acceptance tests passed; Ruff, TypeScript checking, ESLint, and production build passed. ESLint reports seven warnings; the build reports large map/3D bundles. See [validation details](docs/VALIDATION.md).
 
 - The live Austin boundary and OSM retrieval were verified on October 10; full live station/demographic ranking still requires NLR and activated Census credentials.
 - OpenAI integration is covered by mocked contract/evidence tests. Paid model execution and model-quality benchmarking have not been completed.

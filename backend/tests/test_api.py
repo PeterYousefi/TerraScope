@@ -1,5 +1,6 @@
 import time
 
+import pytest
 from fastapi.testclient import TestClient
 from shapely.geometry import box, mapping
 
@@ -8,6 +9,30 @@ from app.main import create_app
 from app.models import Investigation, Question, Source
 from app.providers import ProviderError, now
 from app.store import Store
+
+
+@pytest.mark.parametrize(
+    ("nlr_key", "census_key", "missing"),
+    [("", "", ["NLR_API_KEY", "CENSUS_API_KEY"]), ("configured", "", ["CENSUS_API_KEY"])],
+)
+def test_missing_configuration_rejected_before_job_creation(tmp_path, nlr_key, census_key, missing):
+    settings = Settings(
+        database_url=f"sqlite:///{tmp_path}/setup.db",
+        nlr_api_key=nlr_key,
+        census_api_key=census_key,
+        enable_openai=False,
+        max_jobs_per_hour=1,
+    )
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/api/capabilities").json()["missingConfiguration"] == missing
+        for _ in range(2):
+            response = client.post(
+                "/api/investigations", json={"question": "EV charging in Austin?"}
+            )
+            assert response.status_code == 503
+            assert all(key in response.json()["detail"] for key in missing)
+            assert "OpenAI is optional" in response.json()["detail"]
+        assert client.get("/api/investigations").json() == []
 
 
 class FixtureProviders:

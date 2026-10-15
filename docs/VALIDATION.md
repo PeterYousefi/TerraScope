@@ -51,3 +51,9 @@ A GitHub Actions workflow now runs backend checks, frontend checks/build, and Ch
 - Hosted `/api/capabilities` confirms OpenAI disabled and NLR/Census keys absent. No complete live ranking or paid AI execution is claimed.
 - Azure memory metrics had not yet populated with usable readings during verification; the 1 GB figure is the free-tier allowance, not a measured application working set. No live heavy-analysis memory or production load benchmark was run.
 - Free-tier hosting can sleep or stop at quotas. See [hosting configuration and budget](AZURE.md).
+
+## Missing-credential regression
+
+Following a public run that failed because neither data key was configured, the API now preflights the active provider's required settings. Tests cover both missing keys and only Census missing: repeated submissions return 503, no jobs are persisted, and the job quota is not consumed. Injected test providers declare no credential requirement, so acceptance continues to exercise the actual calculated pipeline with explicit fixtures.
+
+The workspace blocks submission after capability discovery, offers a labeled illustrative report, explains that OpenAI is optional, and keeps failed reports accessible without automatically selecting them on reload. The expanded local suite passes **34 backend tests and 4 frontend tests**; both browser acceptance tests also pass. The hosted smoke now asserts the disabled button, demo link, and immediate 503 for unconfigured submissions. This correction does not enable live ranking: the required source credentials remain absent.

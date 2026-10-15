@@ -65,6 +65,7 @@ function Workspace() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [setup, setSetup] = useState("");
+  const [setupBlocked, setSetupBlocked] = useState(false);
   const [question, setQuestion] = useState(investigations[0]!.question.text);
   const [area, setArea] = useState("Austin");
   const [layers, setLayers] = useState<string[]>(["existing", "demand", "gap"]);
@@ -81,7 +82,8 @@ function Workspace() {
       .then((items) => {
         if (cancelled) return;
         setRecent(items);
-        if (items[0]) setInv((current) => (current.id ? current : items[0]!));
+        const latest = items.find((item) => item.status !== "failed");
+        if (latest) setInv((current) => (current.id ? current : latest));
       })
       .catch((e) => {
         if (!cancelled) setError(e.message);
@@ -90,12 +92,14 @@ function Workspace() {
       api
         .capabilities()
         .then((c) => {
-          if (!cancelled)
+          if (!cancelled) {
+            setSetupBlocked(c.missingConfiguration.length > 0);
             setSetup(
               c.missingConfiguration.length
-                ? `Setup required: ${c.missingConfiguration.join(", ")}. Analysis cannot rank zones until charging data are available.`
+                ? "Setup required: live charging and population data access is not configured. New investigations are unavailable."
                 : "Live public-data analysis configured.",
             );
+          }
         })
         .catch(() => {});
     return () => {
@@ -130,6 +134,7 @@ function Workspace() {
   }, [inv.id, inv.status]);
 
   const run = async (q: string, a: string) => {
+    if (setupBlocked) return;
     setSubmitting(true);
     setError("");
     try {
@@ -223,7 +228,11 @@ function Workspace() {
             </select>
           </div>
         </div>
-        <Button type="submit" className="w-full" disabled={running || !question.trim()}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={running || setupBlocked || !question.trim()}
+        >
           <Search /> {running ? "Investigating…" : "Investigate"}
         </Button>
         {isDemoMode && (
@@ -233,6 +242,19 @@ function Workspace() {
         )}
       </form>
       {setup && <p className="text-xs text-muted-foreground">{setup}</p>}
+      {setupBlocked && (
+        <div className="space-y-3 border-l-2 border-signal pl-3 text-sm">
+          <p>Explore the illustrative report while live data access is being configured.</p>
+          <Button asChild variant="outline" className="w-full">
+            <Link to="/investigations/$id" params={{ id: "austin-ev" }}>
+              View Austin demo report <ArrowRight />
+            </Link>
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Demo data is illustrative. OpenAI is optional and is not required for live ranking.
+          </p>
+        </div>
+      )}
       {error && (
         <p role="alert" className="border-l-2 border-signal pl-3 text-sm">
           {error}

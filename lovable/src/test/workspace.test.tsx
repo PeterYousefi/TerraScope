@@ -6,7 +6,7 @@ import type { Investigation } from "@/types";
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: { component: React.ComponentType }) => ({ options }),
-  Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
+  Link: ({ children }: { children: React.ReactNode }) => <a href="/">{children}</a>,
 }));
 vi.mock("@/components/map/InvestigationMap", () => ({
   InvestigationMap: ({
@@ -49,6 +49,25 @@ beforeEach(() => {
 });
 
 describe("Connected workspace", () => {
+  it("blocks unconfigured live submissions and offers an explicit demo report", async () => {
+    vi.mocked(api.capabilities).mockResolvedValue({
+      aiAvailable: false,
+      missingConfiguration: ["NLR_API_KEY", "CENSUS_API_KEY"],
+    });
+    vi.mocked(api.listInvestigations).mockResolvedValue([
+      { ...result, status: "failed", report: { ...result.report, summary: "Previous failed run" } },
+    ]);
+    render(<Workspace />);
+    await screen.findByText(/Setup required:/);
+    const submit = screen.getByRole("button", { name: /^Investigate$/ });
+    expect(submit).toBeDisabled();
+    fireEvent.submit(submit.closest("form")!);
+    expect(api.createInvestigation).not.toHaveBeenCalled();
+    expect(screen.getByRole("link", { name: /View Austin demo report/ })).toBeInTheDocument();
+    expect(screen.queryByText("Previous failed run")).not.toBeInTheDocument();
+    expect(screen.queryByText("Demo data")).not.toBeInTheDocument();
+  });
+
   it("submits, polls persisted results, and synchronizes map selection", async () => {
     vi.mocked(api.createInvestigation).mockResolvedValue({
       ...result,
