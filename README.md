@@ -10,9 +10,9 @@ TerraScope is a full-stack AI engineering portfolio project. Its application, **
 
 [Open TerraScope](https://terrascope.azurewebsites.net) · [Azure hosting & cost](docs/AZURE.md) · [Setup & methodology](docs/LOCAL_DEVELOPMENT.md) · [Architecture](docs/ARCHITECTURE.md) · [Engineering walkthrough](docs/ENGINEERING.md) · [Validation](docs/VALIDATION.md) · [Screenshot gallery](docs/SCREENSHOTS.md)
 
-![SiteSignal investigation workspace with calculated candidate areas and evidence](docs/screenshots/investigation.png)
+![Azure-hosted SiteSignal report with interactive map, candidate ranking, and evidence](docs/screenshots/azure-demo.png)
 
-*Actual local application capture using explicitly labeled synthetic TEST FIXTURE providers. The blank basemap keeps screenshots independent of public tile services. Values are test outputs, not Austin market findings.*
+*Actual Azure deployment showing the explicitly labeled illustrative Austin report. These are demo values, not verified Austin market findings. See the [gallery](docs/SCREENSHOTS.md) for the connected backend acceptance workflow and its synthetic test data.*
 
 ## The workflow
 
