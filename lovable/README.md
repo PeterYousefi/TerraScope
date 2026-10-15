@@ -1,29 +1,23 @@
-# Welcome to your Lovable project
+# SiteSignal AI frontend
 
-This project was built with [Lovable](https://lovable.dev).
+React 19, TypeScript, and TanStack Start power TerraScope's SiteSignal application. The cinematic frontend originated in Lovable; investigation, report, and comparison flows connect to the local Python backend.
 
-## Build with Lovable
-
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+See the [repository overview](../README.md), [local setup](../docs/LOCAL_DEVELOPMENT.md), and [screenshot gallery](../docs/SCREENSHOTS.md).
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+npm ci
+npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-## Built with
+Start the backend separately on port 8000. With no frontend environment file the client uses the local API. Set `VITE_DEMO_MODE=true` only for an explicitly labeled fixture preview; connection failures never silently enable demos. Backend secrets must never go into public `VITE_*` variables.
 
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
+```sh
+npm test
+npm run typecheck
+npm run lint
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
+
+Browser tests start their own frontend/backend on ports 5174/8001 using synthetic provider fixtures and temporary storage. See the root documentation for Python prerequisites.
