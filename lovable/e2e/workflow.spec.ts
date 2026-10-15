@@ -1,8 +1,28 @@
 import { test, expect } from "@playwright/test";
 
+// Opt-in documentation captures reuse the asserted API workflow, never live-data claims.
+const captureDocs = process.env.CAPTURE_DOCS === "true";
+
+async function screenshot(page: import("@playwright/test").Page, name: string) {
+  if (!captureDocs) return;
+  await page.evaluate(() => document.fonts.ready);
+  if (name !== "landing") {
+    await expect(page.getByRole("button", { name: /^Candidate 1:/ }).first()).toBeVisible();
+    await expect(page.getByText("Loading basemap…", { exact: false })).toHaveCount(0);
+    await page.evaluate(() => {
+      document.querySelectorAll("*").forEach((element) => {
+        if (element.scrollTop) element.scrollTop = 0;
+      });
+      window.scrollTo(0, 0);
+    });
+  }
+  await page.screenshot({ path: `../docs/screenshots/${name}.png`, fullPage: true });
+}
+
 test("preserved landing navigation and persisted Austin workflow with TEST fixtures", async ({
   page,
 }) => {
+  if (captureDocs) await page.setViewportSize({ width: 1440, height: 1000 });
   // Keep routine acceptance independent of public tile service uptime.
   await page.route("https://basemaps.cartocdn.com/gl/positron-gl-style/style.json", (route) =>
     route.fulfill({
@@ -17,6 +37,7 @@ test("preserved landing navigation and persisted Austin workflow with TEST fixtu
   );
   await page.goto("/");
   await expect(page.getByRole("link", { name: "Investigate", exact: true }).first()).toBeVisible();
+  await screenshot(page, "landing");
   await page.getByRole("link", { name: "Investigate", exact: true }).first().click();
   await expect(page.locator("#q")).toBeVisible();
   await expect(page.getByText("Setup required:", { exact: false })).toBeVisible();
@@ -41,13 +62,16 @@ test("preserved landing navigation and persisted Austin workflow with TEST fixtu
     .first()
     .click();
   await expect(page.getByText("TEST FIXTURE", { exact: false }).first()).toBeVisible();
+  await screenshot(page, "investigation");
   await page.getByRole("link", { name: /Open full report/ }).click();
   await expect(page.getByRole("heading", { name: "Candidate ranking" })).toBeVisible();
+  await screenshot(page, "report");
   await expect(page.getByText("Inspect normalized source records and identifiers")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Candidate ranking" })).toBeVisible();
   await page.getByRole("link", { name: "Compare candidates" }).click();
   await expect(page.getByRole("heading", { name: "Compare candidate locations." })).toBeVisible();
+  await screenshot(page, "comparison");
   await page.screenshot({ path: "test-results/connected-comparison.png", fullPage: true });
 });
 

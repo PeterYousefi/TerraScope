@@ -32,6 +32,12 @@ The official Census key requirement is documented at https://www.census.gov/libr
 
 **The full live-data definition of done remains blocked by the two required data keys.** The application never replaces those missing datasets with demo results. Successfully retrieved artifacts remain inspectable even when ranking fails.
 
-## Git
+## Publication and October 15 revalidation
 
-The supplied export had neither Git metadata nor a remote. A local Git history was initialized and focused commits recorded as implementation progressed. `git push` was attempted and returned `fatal: No configured push destination.` **No commits have been pushed.** The existing repository URL is pending; its history must be reconciled before any push. No force-push or remote overwrite occurred.
+The project is connected to `https://github.com/PeterYousefi/TerraScope` and its existing commit history was pushed to `master`. Earlier missing-remote blockers are resolved.
+
+On October 15, 2026, the local checks were rerun: **31 backend tests, 3 frontend tests, and 2 Chromium browser acceptance tests passed**. Ruff, TypeScript checking, ESLint, and production build passed. ESLint still reports seven warnings (six Fast Refresh export warnings and one map cleanup ref warning). Build diagnostics include large map/3D chunks and tooling warnings. The Starlette TestClient deprecation warning remains. These are not reported as a warning-free build.
+
+Documentation captures reuse the asserted browser workflow and are explicitly synthetic. No new public-provider smoke run or paid OpenAI call was performed during this refresh; the October 10 live results above remain historical evidence. The full live-data limitation remains unresolved.
+
+A GitHub Actions workflow now runs backend checks, frontend checks/build, and Chromium acceptance without provider secrets or paid model calls. A local pass does not establish a CI pass; consult the repository Actions run for that result.

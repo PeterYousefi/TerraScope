@@ -6,7 +6,7 @@ The supplied `lovable/` directory is a source export, with no `.git` directory, 
 ## Checklist
 - [x] Inspect source, models, routes and project instructions
 - [x] Run baseline frontend tests/build and local server (all passed)
-- [ ] Connect Git history/remote (blocked: supplied export has neither; URL requested)
+- [x] Connect Git history/remote (published to PeterYousefi/TerraScope)
 - [x] Scaffold typed backend, settings, health/capabilities and SQLite persistence
 - [x] Implement cached HTTP integrations for NLR, Census ACS/TIGER and OSM
 - [x] Generate projected deterministic candidate areas and reproducible scores
@@ -23,4 +23,4 @@ Commit/push each tested slice when existing remote is known. Never provision or 
 
 The local code and fixture-based workflow are implemented and verified: 31 backend tests, 3 frontend tests and 2 Chromium browser tests; typecheck, build and lint pass (lint retains 7 existing export warnings). Live TIGER Austin boundary and 19,571 normalized OSM records were verified. Live station/demographic ranking remains blocked by missing NLR and activated Census keys. Optional paid OpenAI calls were not executed. Routing enrichment remains unimplemented and distances are labeled straight-line. See `VALIDATION.md` for evidence and exact limits.
 
-The folder export had no original branch/history. Local focused commits preserve progress; all pushes remain blocked by the absent GitHub URL. `git push` explicitly failed with no configured destination. No cloud action or paid-service activation was performed.
+The folder export had no original branch/history. Local focused commits preserve progress. The repository was subsequently published at https://github.com/PeterYousefi/TerraScope on October 15, 2026. No application deployment or paid-service activation was performed.
