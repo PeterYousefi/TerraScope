@@ -40,7 +40,7 @@ test("preserved landing navigation and persisted Austin workflow with TEST fixtu
   await screenshot(page, "landing");
   await page.getByRole("link", { name: "Investigate", exact: true }).first().click();
   await expect(page.locator("#q")).toBeVisible();
-  await expect(page.getByText("Setup required:", { exact: false })).toBeVisible();
+  await expect(page.getByText("Live public-data analysis configured.")).toBeVisible();
   await page.locator("#q").fill("Where should I open a new EV charging station in Austin?");
   await page.getByRole("button", { name: "Investigate", exact: true }).click();
   await expect(page.getByText("Execution activity · completed_with_warnings")).toBeVisible({

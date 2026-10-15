@@ -26,7 +26,14 @@ try {
   await page.goto(`${base}/investigate`);
   await expect(page.locator("#q")).toBeVisible();
   await expect(page.getByText("Setup required:", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Investigate", exact: true })).toBeDisabled();
+  await expect(page.getByRole("link", { name: /View Austin demo report/ })).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
+  const blocked = await page.request.post(`${base}/api/investigations`, {
+    data: { question: "Where should I open an EV charging station in Austin?" },
+  });
+  expect(blocked.status()).toBe(503);
+  expect((await blocked.json()).detail).toContain("NLR_API_KEY");
   await page.goto(`${base}/investigations/austin-ev`);
   await expect(page.getByRole("heading", { name: "Candidate ranking" })).toBeVisible();
   await expect(page.getByText("Demo data", { exact: true }).first()).toBeVisible();

@@ -23,7 +23,7 @@ Pricing and limits: [App Service Linux pricing](https://azure.microsoft.com/en-u
 
 ## Capabilities of the public deployment
 
-The frontend, same-origin API, health endpoint, illustrative reports, and comparison are hosted together. Public provider credentials are not present: a new live investigation cannot produce a complete ranking until activated NLR/Census keys are configured. The app discloses this rather than inventing results. The [Austin illustrative report](https://terrascope.azurewebsites.net/investigations/austin-ev) is clearly labeled demo data.
+The frontend, same-origin API, health endpoint, illustrative reports, and comparison are hosted together. Public provider credentials are not present: a new live investigation cannot produce a complete ranking until activated NLR/Census keys are configured. The app rejects unconfigured submissions with HTTP 503 before creating a job or retrieving data. The workspace disables live submission and offers an explicit demo-report link; it never substitutes demo results for a live request. The [Austin illustrative report](https://terrascope.azurewebsites.net/investigations/austin-ev) is clearly labeled demo data.
 
 Paid OpenAI use is disabled. Adding paid API credentials or changing service tiers is a separate cost decision. Anonymous API results are shared; this is not a private multi-tenant workspace. Do not submit sensitive questions or private data. Live jobs can be interrupted when the Free service sleeps or reaches its daily quota; interrupted jobs are marked failed on restart.
 
@@ -67,6 +67,12 @@ npx playwright install chromium
 node scripts/verify-hosted.mjs https://terrascope.azurewebsites.net
 ```
 
-The Chromium smoke checks the real hosted frontend, same-origin API access, direct SPA routes, labeled demo report, reload, comparison, and uncaught browser errors. It makes no investigation submissions or paid API calls. CI also runs this smoke against the built single-process package locally on Linux.
+The Chromium smoke checks the real hosted frontend, same-origin API access, direct SPA routes, labeled demo report, reload, comparison, and uncaught browser errors. It also verifies that an unconfigured submission returns HTTP 503 without creating a job. It makes no successful investigation submissions or paid API calls. CI also runs this smoke against the built single-process package locally on Linux.
 
 To stop the app without changing the free plan, use `az webapp stop -g terrascope-rg -n terrascope`. Deleting `terrascope-rg` removes this deployment and its stored reports; that is a destructive cleanup action.
+
+## Enable live source access
+
+Request your own keys from [NLR](https://developer.nlr.gov/signup/) and [Census](https://api.census.gov/data/key_signup.html). Complete the email activation required by the providers. In Azure Portal, open the `terrascope` App Service, then **Settings → Environment variables → App settings**. Add `NLR_API_KEY` and `CENSUS_API_KEY` with their respective values, save/apply, and let the app restart. Keep `ENABLE_OPENAI=false`.
+
+Confirm `/api/capabilities` returns an empty `missingConfiguration` array, then submit a new Austin investigation and inspect actual source outcomes. Presence of a key does not establish validity, activation, provider uptime, or successful live ranking. Never commit keys, embed them in `VITE_*` settings, or paste them into issue reports. These source keys do not require enabling paid OpenAI calls.

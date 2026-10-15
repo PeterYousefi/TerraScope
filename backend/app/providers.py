@@ -101,6 +101,8 @@ def normalize_stations(payload):
 
 
 class Providers:
+    required_configuration = ("NLR_API_KEY", "CENSUS_API_KEY")
+
     def __init__(self, settings, store, client: httpx.AsyncClient):
         self.settings, self.store, self.client = settings, store, client
         self.lock = asyncio.Lock()

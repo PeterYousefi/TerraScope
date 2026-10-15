@@ -36,6 +36,11 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 def create_app(settings=None, provider_factory=Providers):
     settings = settings or Settings()
     store = Store(settings.database_url)
+    missing_configuration = [
+        name
+        for name in getattr(provider_factory, "required_configuration", ())
+        if not getattr(settings, name.lower())
+    ]
 
     @asynccontextmanager
     async def lifespan(app):
@@ -108,14 +113,7 @@ def create_app(settings=None, provider_factory=Providers):
             "supported": ["Austin, Texas: EV charging opportunity areas"],
             "aiAvailable": settings.ai_available,
             "nlrConfigured": bool(settings.nlr_api_key),
-            "missingConfiguration": [
-                k
-                for k, value in [
-                    ("NLR_API_KEY", settings.nlr_api_key),
-                    ("CENSUS_API_KEY", settings.census_api_key),
-                ]
-                if not value
-            ],
+            "missingConfiguration": missing_configuration,
             "routing": "Unavailable; straight-line distances only",
             "acsYear": settings.acs_year,
         }
@@ -125,6 +123,14 @@ def create_app(settings=None, provider_factory=Providers):
         if not supported(body.question, body.area):
             raise HTTPException(
                 422, "Only Austin, Texas EV charging opportunity analysis is supported"
+            )
+        if missing_configuration:
+            raise HTTPException(
+                503,
+                "Live investigations are not configured. Missing required data-source keys: "
+                + ", ".join(missing_configuration)
+                + ". The illustrative Austin report remains available at "
+                "/investigations/austin-ev. OpenAI is optional.",
             )
         active = [i for i in store.list() if i.status in ("queued", "running")]
         duplicate = next(
