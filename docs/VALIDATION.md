@@ -41,3 +41,13 @@ On October 15, 2026, the local checks were rerun: **31 backend tests, 3 frontend
 Documentation captures reuse the asserted browser workflow and are explicitly synthetic. No new public-provider smoke run or paid OpenAI call was performed during this refresh; the October 10 live results above remain historical evidence. The full live-data limitation remains unresolved.
 
 A GitHub Actions workflow now runs backend checks, frontend checks/build, and Chromium acceptance without provider secrets or paid model calls. A local pass does not establish a CI pass; consult the repository Actions run for that result.
+
+## Azure deployment verification — October 15, 2026
+
+- Deployed the opt-in static TanStack frontend and FastAPI API as one Python 3.12 process at **https://terrascope.azurewebsites.net**.
+- Verified resource inventory: one App Service plan (`F1`, `Free`, capacity 1) and one web app, in `terrascope-rg`. No paid database, registry, telemetry service, or model endpoint was provisioned.
+- Backend suite now has **32 passing tests**, including hosted frontend routing, static file serving, preserved API routing, and missing-asset/API 404 behavior. Ruff, frontend tests, TypeScript checking and ESLint pass with the previously disclosed warnings. Static production build passes.
+- Chromium smoke passed against both the locally built single-process target and the real public Azure URL: API health, landing, direct workspace navigation with truthful missing-key setup, labeled Austin demo report, reload, comparison, and no uncaught browser exceptions. A deployment-only hydration mismatch found during the first smoke was fixed with an explicit client-rendered entry for the static target; the default SSR entry remains available.
+- Hosted `/api/capabilities` confirms OpenAI disabled and NLR/Census keys absent. No complete live ranking or paid AI execution is claimed.
+- Azure memory metrics had not yet populated with usable readings during verification; the 1 GB figure is the free-tier allowance, not a measured application working set. No live heavy-analysis memory or production load benchmark was run.
+- Free-tier hosting can sleep or stop at quotas. See [hosting configuration and budget](AZURE.md).

@@ -8,7 +8,7 @@ The Austin-only planner retrieves NLR public operating EV stations, ACS tract po
 
 Each result contains raw normalized source records, retrieval metadata, geographic features, score components, actual events and limitations. Deterministic statistical summaries remain available without AI. OpenAI is disabled unless explicitly enabled and configured; structured tool selection is validated against the supported pipeline. AI explanations can only select candidate/evidence IDs and precomputed observation IDs, preventing invented numeric claims from entering the displayed report. Paid calls are capped and never required for tests.
 
-Local endpoints: frontend 5173, backend 8000, OpenAPI `/docs`. No cloud resources, authentication or deployment scripts are part of this scope.
+Local endpoints: frontend 5173, backend 8000, OpenAPI `/docs`. The default workflow is local. An opt-in static frontend target can be served by FastAPI on Azure Free F1; see [Azure hosting](AZURE.md). Authentication and multi-tenant isolation remain outside the current implementation.
 
 ## Provider and request bounds
 

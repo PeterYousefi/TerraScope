@@ -49,4 +49,4 @@ Geographic scores are cohort-relative screening proxies. Tract aggregation assum
 - **Improve frontend delivery:** measure map/3D loading and bundle costs; retain the existing visual experience while testing any loading changes.
 - **Prepare for hosted use:** authentication, tenant-specific limits/storage, durable workers, migration strategy, structured monitoring, retention policy, and load tests before claiming production readiness.
 
-No vector database, model training, multi-agent autonomy, deployment, or production customer adoption is claimed by this project. The strongest evidence here is the implemented retrieval/analysis/reporting boundary and its executable failure tests.
+A portfolio demonstration is hosted on Azure Free F1 with one Python worker; see [hosting and limits](AZURE.md). No vector database, model training, multi-agent autonomy, or production customer adoption is claimed by this project. The strongest evidence here is the implemented retrieval/analysis/reporting boundary and its executable failure tests.
