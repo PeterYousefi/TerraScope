@@ -48,6 +48,14 @@ jobs:
       - name: Browser acceptance
         working-directory: lovable
         run: npm run test:e2e
+      - name: Build and verify single-process hosting
+        working-directory: lovable
+        run: |
+          STATIC_HOSTING=true VITE_API_BASE_URL=/ npm run build
+          STATIC_DIR="$GITHUB_WORKSPACE/lovable/dist/client" DATABASE_URL=sqlite:////tmp/terrascope-hosted-ci.db ../backend/.venv/bin/python -m uvicorn app.main:app --app-dir ../backend --host 127.0.0.1 --port 8002 &
+          hosted_pid=$!
+          trap 'kill "$hosted_pid"' EXIT
+          node scripts/verify-hosted.mjs http://127.0.0.1:8002
       - name: Upload browser failure evidence
         if: failure()
         uses: actions/upload-artifact@v4

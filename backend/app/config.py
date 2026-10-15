@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     max_jobs_per_hour: int = Field(default=10, ge=1, le=100)
     request_timeout: int = Field(default=60, ge=5, le=120)
     max_queue: int = Field(default=5, ge=1, le=20)
+    static_dir: str = ""
     weights: dict[str, float] = {
         "Demand proxy": 0.35,
         "Coverage gap": 0.30,

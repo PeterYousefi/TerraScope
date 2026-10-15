@@ -183,6 +183,14 @@ def create_app(settings=None, provider_factory=Providers):
     def report(id: str):
         return get(id).report
 
+    if settings.static_dir:
+        from starlette.middleware.gzip import GZipMiddleware
+
+        from .static import FrontendFiles
+
+        app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=5)
+        app.mount("/", FrontendFiles(directory=settings.static_dir), name="frontend")
+
     return app
 
 

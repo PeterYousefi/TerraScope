@@ -31,3 +31,9 @@ CAPTURE_DOCS=true npm run test:e2e
 PowerShell: set `$env:CAPTURE_DOCS="true"` before running `npm run test:e2e`.
 
 The opt-in captures reuse the asserted acceptance workflow and write to `docs/screenshots/`. Review the PNGs before committing. Routine tests do not overwrite documentation assets. Screenshots demonstrate interface behavior, not validated live Austin recommendations.
+
+## Public Azure deployment
+
+![Actual Azure-hosted illustrative Austin report](screenshots/azure-demo.png)
+
+Captured from https://terrascope.azurewebsites.net/investigations/austin-ev on October 15, 2026. This is the application's explicitly labeled illustrative dataset, not the synthetic acceptance-test providers and not verified live market findings. Unlike routine test captures, this public screenshot uses the configured public basemap. See [Azure hosting](AZURE.md) for costs and limitations.

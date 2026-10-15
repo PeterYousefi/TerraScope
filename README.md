@@ -8,7 +8,7 @@
 
 TerraScope is a full-stack AI engineering portfolio project. Its application, **SiteSignal AI**, investigates one concrete question: **“Where should I open an EV charging station in Austin?”** It joins public charging, demographic, boundary, and OpenStreetMap data; calculates spatial features; and produces persisted, inspectable reports. Optional OpenAI planning and evidence synthesis sit around a deterministic analysis pipeline.
 
-[Setup & methodology](docs/LOCAL_DEVELOPMENT.md) · [Architecture](docs/ARCHITECTURE.md) · [Engineering walkthrough](docs/ENGINEERING.md) · [Validation](docs/VALIDATION.md) · [Screenshot gallery](docs/SCREENSHOTS.md)
+[Open TerraScope](https://terrascope.azurewebsites.net) · [Azure hosting & cost](docs/AZURE.md) · [Setup & methodology](docs/LOCAL_DEVELOPMENT.md) · [Architecture](docs/ARCHITECTURE.md) · [Engineering walkthrough](docs/ENGINEERING.md) · [Validation](docs/VALIDATION.md) · [Screenshot gallery](docs/SCREENSHOTS.md)
 
 ![SiteSignal investigation workspace with calculated candidate areas and evidence](docs/screenshots/investigation.png)
 
@@ -113,7 +113,7 @@ Browser acceptance starts a real FastAPI instance with a temporary SQLite databa
 - The live Austin boundary and OSM retrieval were verified on October 10; full live station/demographic ranking still requires NLR and activated Census credentials.
 - OpenAI integration is covered by mocked contract/evidence tests. Paid model execution and model-quality benchmarking have not been completed.
 - Opportunity scores are screening proxies, not validated demand forecasts. Land access, grid capacity, permits, utilization, and returns are unassessed. Distances are straight-line meters.
-- This is a local, single-process application. Authentication, multi-tenant isolation, distributed workers, deployment, monitoring, and production load testing remain future work.
+- A single-process portfolio deployment runs on Azure Free F1 at [terrascope.azurewebsites.net](https://terrascope.azurewebsites.net). Live provider keys are not configured there; [view the labeled illustrative report](https://terrascope.azurewebsites.net/investigations/austin-ev). Authentication, multi-tenant isolation, distributed workers, monitoring, and production load testing remain future work.
 - The existing Lovable frontend was extended with a Python analysis backend and connected investigation flows; its cinematic landing previews remain explicitly illustrative.
 
 The next milestone is a recorded end-to-end live run with all required sources, followed by a small versioned model evaluation set and production operational work. See the [engineering walkthrough](docs/ENGINEERING.md) for tradeoffs and a reviewer route through the code.
